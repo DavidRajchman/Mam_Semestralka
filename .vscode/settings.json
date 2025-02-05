@@ -1,0 +1,19 @@
+{
+    "C_Cpp.intelliSenseEngine": "default",
+    "idf.espIdfPath": "/home/david/esp/v5.4/esp-idf",
+    "idf.openOcdConfigs": [
+        "board/esp32c6-lpcore-builtin.cfg"
+    ],
+    "idf.port": "/dev/ttyACM0",
+    "idf.toolsPath": "/home/david/.espressif",
+    "files.associations": {
+        "task.h": "c",
+        "stdint.h": "c",
+        "ulp_lp_core.h": "c",
+        "esp_log.h": "c",
+        "stdio.h": "c",
+        "rfid.h": "c",
+        "json_parser.h": "c"
+    },
+    "idf.flashType": "UART"
+}

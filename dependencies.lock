@@ -1,0 +1,28 @@
+dependencies:
+  espressif/led_strip:
+    component_hash: f907c58f722c58ab8545366668cfd8769cefb7d97a631a14e9d16234cc72bdff
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=5.0'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 3.0.0
+  idf:
+    source:
+      type: idf
+    version: 5.4.0
+  rc522:
+    dependencies: []
+    source:
+      path: /home/david/Documents/MAM_Semestralka/MAM_semestralka/components/rc522
+      type: local
+    version: 3.2.4
+direct_dependencies:
+- abobija/rc522
+- espressif/led_strip
+- idf
+manifest_hash: ea81ae5a54dbeef99c3a7746b2d016a17599235dba730793a62bfc70c5e4eb6e
+target: esp32c6
+version: 2.0.0

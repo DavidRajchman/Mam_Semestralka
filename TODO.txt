@@ -1,0 +1,2 @@
+Dodelat SNTP sync - task ktery jednou denne spusti wifi, synchronizuje cas a wifi vypne
+Dodelat ukladani alarmu a buzeni
