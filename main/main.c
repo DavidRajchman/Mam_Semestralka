@@ -6,6 +6,8 @@
 #include "ulp_main.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
+
 #include "esp_log.h"
 #include "nvs.h"
 #include "nvs_flash.h"
@@ -15,6 +17,7 @@
 #include "json_parser.h"
 #include "nvs_config.h"
 #include "wifi_time.h"
+#include "buzzer.h"
 
 
 
@@ -28,11 +31,12 @@
 #define BUTTON3_PIN_LP 6
 #define BUTTON4_PIN_LP 7
 
-#define WAIT_FOR_USER_INPUT_TIMEOUT_MS 5000
+#define WAIT_FOR_USER_INPUT_TIMEOUT_MS 20000
 
-
-
-
+static const char* wifi_credentials[2] = {
+    "IoTtest",
+    "2345678901"
+};
 
 uint8_t button_values[4] = {0};
 
@@ -45,6 +49,13 @@ QueueHandle_t interruptQueue;
 
 QueueHandle_t buttonControlQueue; //queue for button control commands
 uint8_t button_control_active = 0; //flag for button - commands will be sent into the queue, only if this flag is set
+//DISPLAY MUTEX
+SemaphoreHandle_t display_mutex = NULL;
+
+TaskHandle_t wifiTimeSyncTaskHandle = NULL;
+uint wifi_fail_counter = 0;
+uint wifi_delay_cycles = 0; //delay cycles for wifi connection if previous connection failed - 1 cycle per update task
+
 //queue data type for button control commands - button_id and command, both uint8_t
 typedef struct
 {
@@ -54,6 +65,7 @@ typedef struct
 
 u8g2_t u8g2;
 u8g2_t *u8g2_ptr = NULL;
+
 
 
 
@@ -235,38 +247,49 @@ void task_RFID_tag_recieved(void *param)
             ESP_LOGI(TAG, "RFID task parsed successfully - loading display");
             if (task_buffer.Type == 1)
             {
-                // Assuming wifi_status and time_status as 0 for "OK"
-                if(u8g2_ptr != NULL) {
-                    display_task_type1(0, 0, &task_buffer, *u8g2_ptr);
-                } else {
-                    ESP_LOGE(TAG, "Display is not initialized");
-                }
-                // Wait for user input
-                //clear button queue
-                button_control_t button_control;
-                while (xQueueReceive(buttonControlQueue, &button_control, 0) == pdTRUE)
-                {
-                    ESP_LOGI(TAG, "Cleared button control queue");
-                }
-                //set button control active
-                button_control_active = 1;
-                //wait for button press until timeout
-                TickType_t xTicksToWait = pdMS_TO_TICKS(WAIT_FOR_USER_INPUT_TIMEOUT_MS);
-                if (xQueueReceive(buttonControlQueue, &button_control, xTicksToWait) == pdTRUE)
-                {
-                    ESP_LOGI(TAG, "Button %d pressed while in task display mode", button_control.button_id);
-                    if (button_control.command == 1)
-                    {
-                        ESP_LOGI(TAG, "Button %d short press while in task display mode", button_control.button_id);
+                //take mutex
+                if(xSemaphoreTake(display_mutex, 2000/portTICK_PERIOD_MS)){
+                    uint8_t wifi_status = get_wifi_status();
+                    uint8_t time_status = get_time_validity();
+                    // Assuming wifi_status and time_status as 0 for "OK"
+                    if(u8g2_ptr != NULL) {
+                        display_task_type1(wifi_status, time_status, &task_buffer, *u8g2_ptr);
+                    } else {
+                        ESP_LOGE(TAG, "Display is not initialized");
                     }
-                    else if (button_control.command == 2)
+                    // Wait for user input
+                    //clear button queue
+                    button_control_t button_control;
+                    while (xQueueReceive(buttonControlQueue, &button_control, 0) == pdTRUE)
                     {
-                        ESP_LOGI(TAG, "Button %d long pres swhile in task display mode" , button_control.button_id);
+                        ESP_LOGI(TAG, "Cleared button control queue");
                     }
+                    //set button control active
+                    button_control_active = 1;
+                    //wait for button press until timeout
+                    TickType_t xTicksToWait = pdMS_TO_TICKS(WAIT_FOR_USER_INPUT_TIMEOUT_MS);
+                    if (xQueueReceive(buttonControlQueue, &button_control, xTicksToWait) == pdTRUE)
+                    {
+                        ESP_LOGI(TAG, "Button %d pressed while in task display mode", button_control.button_id);
+                        if (button_control.command == 1)
+                        {
+                            ESP_LOGI(TAG, "Button %d short press while in task display mode", button_control.button_id);
+                        }
+                        else if (button_control.command == 2)
+                        {
+                            ESP_LOGI(TAG, "Button %d long pres swhile in task display mode" , button_control.button_id);
+                        }
+                    }
+                    else
+                    {
+                        ESP_LOGI(TAG, "No button press detected during task display mode == timeout");
+                    }
+                    //give mutex
+                    xSemaphoreGive(display_mutex);
                 }
                 else
                 {
-                    ESP_LOGI(TAG, "No button press detected during task display mode == timeout");
+                    ESP_LOGW(TAG, "RFID_TASK-Failed to take display mutex");
                 }
 
 
@@ -328,16 +351,97 @@ void on_RFID_state_changed(void *arg, esp_event_base_t base, int32_t event_id, v
     }
 }
 
+void task_update_tick(void *params)
+{
+    uint8_t wifi_status, time_status;
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+    const TickType_t xFrequency = pdMS_TO_TICKS(1000); // period: 1 second
+
+    while (1)
+    {
+        // Wait until the next cycle.
+        vTaskDelayUntil(&xLastWakeTime, xFrequency);
+
+        // Update the display
+        wifi_status = get_wifi_status();
+        time_status = get_time_validity();
+        if(time_status == 1)
+        {
+            if (wifiTimeSyncTaskHandle != NULL) {
+                eTaskState state = eTaskGetState(wifiTimeSyncTaskHandle);
+                if (state != eDeleted) {
+                    ESP_LOGD(TAG, "Time sync task is still running. State=%d", state);
+                } else {
+                    ESP_LOGD(TAG, "Time sync task has been deleted - creating.");
+                    if(wifi_status == WIFI_STATUS_DISCONNECTED_FAIL && wifi_delay_cycles < 1)
+                    {
+                        wifi_delay_cycles = wifi_fail_counter*120;
+                        wifi_fail_counter++;
+                        xTaskCreate(wifi_sync_sntp_time_once_task, "wifi_sync_sntp_time_once_task", 8000, (void*)wifi_credentials, 1, &wifiTimeSyncTaskHandle);
+                        if (wifi_delay_cycles > 90000)
+                        {
+                            wifi_delay_cycles = 90000;
+                        }
+                        ESP_LOGW(TAG, "Failed to connect to wifi - retrying in %d seconds", wifi_delay_cycles);
+
+                    }
+                    else if(wifi_status == WIFI_STATUS_DISCONNECTED_FAIL)
+                    {
+                        wifi_delay_cycles--;
+                        ESP_LOGW(TAG, "Failed to connect to wifi - retrying in %d seconds", wifi_delay_cycles);
+
+                    }
+                    else
+                    {
+                        wifi_fail_counter = 0;
+                        wifi_delay_cycles = 0;
+                        xTaskCreate(wifi_sync_sntp_time_once_task, "wifi_sync_sntp_time_once_task", 8000, (void*)wifi_credentials, 1, &wifiTimeSyncTaskHandle);
+
+                    }
+
+
+                }
+            } else {
+                ESP_LOGI(TAG, "Time sync task handle is NULL; task not running - creating.");
+                xTaskCreate(wifi_sync_sntp_time_once_task, "wifi_sync_sntp_time_once_task", 8000, (void*)wifi_credentials, 1, &wifiTimeSyncTaskHandle);
+            }
+
+        }
+        //take mutex
+       if(xSemaphoreTake(display_mutex, 10/portTICK_PERIOD_MS)){
+            if (u8g2_ptr != NULL)
+            {
+                display_idle_clock_screen(&u8g2, wifi_status, time_status);
+            }
+            else
+            {
+                ESP_LOGE(TAG, "Display is not initialized");
+            }
+            //release mutex
+            xSemaphoreGive(display_mutex);
+        }
+        else
+        {
+            ESP_LOGW(TAG, "UPDATE_TASK-Failed to take display mutex");
+        }
+    }
+}
 
 void app_main(void)
 {
-    esp_err_t err = nvs_flash_init_partition(NVS_PARTITION);
+    interruptQueue = xQueueCreate(10, sizeof(int));
+    buttonControlQueue = xQueueCreate(10, sizeof(button_control_t));
+    display_mutex = xSemaphoreCreateMutex();
+
+    nvs_flash_init(); //nvs for wifi
+    wifi_init();// initializes wifi - does not connect
+    esp_err_t err = nvs_flash_init_partition(NVS_PARTITION); //nvs for json data
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to initialize NVS partition: %s", esp_err_to_name(err));
         return;
     }
-    nvs_flash_init();
+
     set_default_timetables();
     log_timetable(1);
     log_timetable(2);
@@ -350,8 +454,7 @@ void app_main(void)
 
     rfid_setup(on_RFID_state_changed);
 
-    wifi_init_sta_simple("IoTtest", "2345678901");
-    init_sntp();
+    xTaskCreate(wifi_sync_sntp_time_once_task, "wifi_sync_sntp_time_once_task", 8000, (void*)wifi_credentials, 1, &wifiTimeSyncTaskHandle);
 
     init_ssd1306_display(&u8g2);
     //xTaskCreate(task_test_SSD1306i2c,"x",4096,NULL,1,NULL);
@@ -402,9 +505,10 @@ void app_main(void)
     init_led_strip(&led_strip);
 
 
-    interruptQueue = xQueueCreate(10, sizeof(int));
-    buttonControlQueue = xQueueCreate(10, sizeof(button_control_t));
+
+
     xTaskCreate(GPIOinteruptTask, "GPIOinteruptTask", 2048, NULL, 1, NULL);
+    xTaskCreate(task_update_tick, "task_update_tick", 4096, NULL, 1, NULL);
 
     ESP_ERROR_CHECK(gpio_install_isr_service(0));
     ESP_ERROR_CHECK(gpio_isr_handler_add(INTERUPT_PIN, gpio_isr_handler, (void *)INTERUPT_PIN));
@@ -416,7 +520,7 @@ void app_main(void)
     {
         if (led_value > 100)
         {
-            led_value = 100;
+            led_value = 30;
         }
         led_strip_set_pixel(led_strip,0,led_value,0,0);
         led_strip_refresh(led_strip);
@@ -441,12 +545,7 @@ void app_main(void)
         time(&now);
         localtime_r(&now, &timeinfo);
         ESP_LOGI(TAG, "Current time: %s", asctime(&timeinfo));
-        //if time year is 1970, time is not set //reapeat sntp init
-        if(timeinfo.tm_year < 71)
-        {
-            ESP_LOGE(TAG, "Time not set - reinitializing SNTP");
-            init_sntp();
-        }
+
 
     }
 
