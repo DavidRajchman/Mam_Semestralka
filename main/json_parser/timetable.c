@@ -13,11 +13,21 @@ static const char *TAG = "TT_NVS";
 void set_default_timetables(void)
 {
     const char *TAG = "DEFAULT_TIMETABLES";
-    timetable_t tt1, tt2, tt3;
+    timetable_t tt0, tt1, tt2, tt3;
+    memset(&tt0, 0, sizeof(tt0));
     memset(&tt1, 0, sizeof(tt1));
     memset(&tt2, 0, sizeof(tt2));
     memset(&tt3, 0, sizeof(tt3));
-
+    // Define default timetable 0 WHICH IS ALWAYS TREATED AS DO NOT DISTURB
+    tt0.Type = 1;
+    strncpy(tt1.Name, "DO NOT DISTURB", MAX_NAME_LEN);
+    tt0.Name[MAX_NAME_LEN] = '\0';
+    tt0.ID = 1;
+    tt0.times_count = 2;
+    tt0.Times_active[0].Start_time = 000;
+    tt0.Times_active[0].End_time   = 800;
+    tt0.Times_active[1].Start_time = 2200;
+    tt0.Times_active[1].End_time   = 2359;
     // Define default timetable 1
     tt1.Type = 1;
     strncpy(tt1.Name, "Morning Schedule", MAX_NAME_LEN);
@@ -45,7 +55,7 @@ void set_default_timetables(void)
     tt3.ID = 3;
     tt3.times_count = 1;
     tt3.Times_active[0].Start_time = 1800;
-    tt3.Times_active[0].End_time   = 1900;
+    tt3.Times_active[0].End_time   = 2100;
 
     char *json_str;
     esp_err_t err;

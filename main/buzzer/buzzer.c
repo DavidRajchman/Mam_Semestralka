@@ -1,5 +1,5 @@
 #include "buzzer.h"
-static void buzzer_init(void)
+void buzzer_init(void)
 {
     // Prepare and then apply the LEDC PWM timer configuration
     ledc_timer_config_t ledc_timer = {
@@ -37,6 +37,7 @@ void play_tone(uint32_t freq, uint32_t duration_ms)
 }
 
 
+
 void play_chirp(uint8_t chirpID)
 {
     switch (chirpID)
@@ -62,12 +63,12 @@ void play_chirp(uint8_t chirpID)
         vTaskDelay(25 / portTICK_PERIOD_MS); // Quiet time
         play_tone(NOTE_B4, 150);
         break;
-    case 4:
-        play_tone(NOTE_A4, 250);
-        vTaskDelay(50 / portTICK_PERIOD_MS); // Quiet time
-        play_tone(NOTE_C4, 250);
-        vTaskDelay(50 / portTICK_PERIOD_MS); // Quiet time
-        play_tone(NOTE_E4, 250);
+    case 4: //best chirp
+        play_tone(NOTE_A3, 150);
+        vTaskDelay(300 / portTICK_PERIOD_MS); // Quiet time
+        play_tone(NOTE_C3, 100);
+        vTaskDelay(30 / portTICK_PERIOD_MS); // Quiet time
+        play_tone(NOTE_E3, 150);
         break;
     case 5:
         play_tone(NOTE_C4, 200);
@@ -85,3 +86,16 @@ void play_chirp(uint8_t chirpID)
     }
 }
 
+void play_chirp_task(void *pvParameters)
+{
+    QueueHandle_t chirpQueue = (QueueHandle_t)pvParameters;
+    uint8_t chirpCode;
+
+    ESP_LOGI("BUZZER_TASK", "Play Chirp Task started");
+    while (1) {
+        if (xQueueReceive(chirpQueue, &chirpCode, portMAX_DELAY) == pdPASS) {
+            ESP_LOGI("BUZZER_TASK", "Received chirp code: %d", chirpCode);
+            play_chirp(chirpCode);
+        }
+    }
+}

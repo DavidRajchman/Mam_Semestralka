@@ -80,32 +80,48 @@ void set_default_tasks(void)
     }
 
     // Default Task 3
-    t3.Type = 1;
-    strncpy(t3.Name, "Meeting", MAX_TASK_NAME_LEN);
-    t3.Name[MAX_TASK_NAME_LEN] = '\0';
-    t3.ID = 3;
-    t3.RFID_UID[0] = '\0';
-    for (int i = 0; i < TASK_MAX_OPTIONS; i++) {
-        if(i == 0) {
-            strncpy(t3.Options[i].display_text, "Team Meeting", MAX_OPTION_DISPLAY_LEN);
-            t3.Options[i].display_text[MAX_OPTION_DISPLAY_LEN] = '\0';
-            uint8_t ts3[] = {2, 4};
-            t3.Options[i].timeslot_count = sizeof(ts3) / sizeof(ts3[0]);
-            for (int j = 0; j < t3.Options[i].timeslot_count; j++) {
-                t3.Options[i].timeslots[j] = ts3[j];
-            }
-            t3.Options[i].priority = 2;
-            t3.Options[i].days_till_em = 0;
-        } else {
-            t3.Options[i].display_text[0] = '\0';
-            t3.Options[i].timeslot_count = 0;
-            t3.Options[i].priority = 0;
-            t3.Options[i].days_till_em = 0;
-        }
-    }
+    const char *t3_json = "{"
+                            "\"Type\": 1,"
+                            "\"Name\": \"My Custom Task\","
+                            "\"ID\": 3,"
+                            "\"RFID_UID\": \"47F13834\","
+                            "\"Options\": ["
+                                "{"
+                                    "\"display_text\": \"Option 1: Description\","
+                                    "\"Timeslots\": [2,3],"
+                                    "\"priority\": 2,"
+                                    "\"days_till_em\": 0"
+                                "},"
+                                "{"
+                                    "\"display_text\": \"Option 2: Description\","
+                                    "\"Timeslots\": [1],"
+                                    "\"priority\": 1,"
+                                    "\"days_till_em\": 0"
+                                "},"
+                                "{"
+                                    "\"display_text\": \"Option 3: Description\","
+                                    "\"Timeslots\": [],"
+                                    "\"priority\": 0,"
+                                    "\"days_till_em\": 0"
+                                "},"
+                                "{"
+                                    "\"display_text\": \"Option 4: Description\","
+                                    "\"Timeslots\": [],"
+                                    "\"priority\": 0,"
+                                    "\"days_till_em\": 0"
+                                "}"
+                            "]"
+                          "}";
+
+    // Store t3 using the JSON string.
+    esp_err_t err = store_task_json(t3_json, true);
+    if(err == ESP_OK)
+        ESP_LOGI(localTAG, "Stored default task 3 (personal task) successfully.");
+    else
+        ESP_LOGE(localTAG, "Failed to store default task 3: %s", esp_err_to_name(err));
 
     char *json_str;
-    esp_err_t err;
+
     // Store each task using task_to_json and store_task_json.
     json_str = task_to_json(&t1);
     if (json_str != NULL) {
@@ -131,17 +147,7 @@ void set_default_tasks(void)
         ESP_LOGE(localTAG, "Failed to generate JSON for default task 2.");
     }
 
-    json_str = task_to_json(&t3);
-    if (json_str != NULL) {
-        err = store_task_json(json_str, true);
-        if(err == ESP_OK)
-            ESP_LOGI(localTAG, "Stored default task 3 successfully.");
-        else
-            ESP_LOGE(localTAG, "Failed to store default task 3: %s", esp_err_to_name(err));
-        free(json_str);
-    } else {
-        ESP_LOGE(localTAG, "Failed to generate JSON for default task 3.");
-    }
+
 }
 
 /**

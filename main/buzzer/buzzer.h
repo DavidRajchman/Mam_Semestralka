@@ -1,3 +1,6 @@
+#ifndef BUZZER_H
+#define BUZZER_H
+
 #include <stdio.h>
 #include "driver/ledc.h"
 #include "esp_err.h"
@@ -7,14 +10,21 @@
 
 #define LEDC_TIMER              LEDC_TIMER_0
 #define LEDC_MODE               LEDC_LOW_SPEED_MODE
-#define LEDC_OUTPUT_IO          (5) // Define the output GPIO
+#define LEDC_OUTPUT_IO          (10) // Define the output GPIO
 #define LEDC_CHANNEL            LEDC_CHANNEL_0
 #define LEDC_DUTY_RES           LEDC_TIMER_13_BIT // Set duty resolution to 13 bits
 #define LEDC_DUTY               (4096) // Set duty to 50%. (2 ** 13) * 50% = 4096
 #define LEDC_FREQUENCY          (4000) // Frequency in Hertz. Set frequency at 4 kHz
 
-static void buzzer_init(void);
+void buzzer_init(void);
 void play_tone(uint32_t freq, uint32_t duration_ms);
+void play_chirp(uint8_t chirpID);
+void play_chirp_task(void *pvParameters);
+#define SEND_CHIRP(queue, code)    \
+    do {                           \
+        uint8_t __chirp = (uint8_t)(code); \
+        xQueueSend((queue), &__chirp, 0);    \
+    } while(0)
 
 
 #define NOTE_C3  262
@@ -68,3 +78,5 @@ void play_tone(uint32_t freq, uint32_t duration_ms);
 #define NOTE_A6  3520
 #define NOTE_AS6 3729
 #define NOTE_B6  3951
+
+#endif // BUZZER_H

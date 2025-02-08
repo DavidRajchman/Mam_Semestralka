@@ -18,11 +18,9 @@
 #include "nvs_config.h"
 #include "wifi_time.h"
 #include "buzzer.h"
+#include "led.h"
 
 
-
-
-#include "led_strip.h"
 
 #define INTERUPT_PIN 1
 #define INTERUPT_PIN_LP 0
@@ -32,6 +30,8 @@
 #define BUTTON4_PIN_LP 7
 
 #define WAIT_FOR_USER_INPUT_TIMEOUT_MS 20000
+
+
 
 static const char* wifi_credentials[2] = {
     "IoTtest",
@@ -48,6 +48,7 @@ static const char *TAG = "main";
 QueueHandle_t interruptQueue;
 
 QueueHandle_t buttonControlQueue; //queue for button control commands
+QueueHandle_t chirpQueue; //queue for chirp commands - based on play_chirp function
 uint8_t button_control_active = 0; //flag for button - commands will be sent into the queue, only if this flag is set
 //DISPLAY MUTEX
 SemaphoreHandle_t display_mutex = NULL;
@@ -179,36 +180,7 @@ void LP_gpio_inicializace(uint8_t gpio_num)
 }
 
 
-void init_led_strip(led_strip_handle_t* led_strip)
-{
-    /// LED strip common configuration
-    led_strip_config_t strip_config = {
-        .strip_gpio_num = 8,  // The GPIO that connected to the LED strip's data line
-        .max_leds = 1,                 // The number of LEDs in the strip,
-        .led_model = LED_MODEL_WS2812, // LED strip model, it determines the bit timing
-        .color_component_format = LED_STRIP_COLOR_COMPONENT_FMT_GRB, // The color component format is G-R-B
-        .flags = {
-            .invert_out = false, // don't invert the output signal
-        }
-    };
 
-    /// RMT backend specific configuration
-    led_strip_rmt_config_t rmt_config = {
-        .clk_src = RMT_CLK_SRC_DEFAULT,    // different clock source can lead to different power consumption
-        .resolution_hz = 10 * 1000 * 1000, // RMT counter clock frequency: 10MHz
-        .mem_block_symbols = 64,           // the memory size of each RMT channel, in words (4 bytes)
-        .flags = {
-            .with_dma = false, // DMA feature is available on chips like ESP32-S3/P4
-        }
-    };
-
-    /// Create the LED strip object
-
-    ESP_ERROR_CHECK(led_strip_new_rmt_device(&strip_config, &rmt_config, led_strip));
-
-
-
-}
 
 
 /**
@@ -432,7 +404,8 @@ void app_main(void)
     interruptQueue = xQueueCreate(10, sizeof(int));
     buttonControlQueue = xQueueCreate(10, sizeof(button_control_t));
     display_mutex = xSemaphoreCreateMutex();
-
+    chirpQueue = xQueueCreate(10, sizeof(uint8_t));
+    xTaskCreate(play_chirp_task, "play_chirp_task", 2048, (void *)chirpQueue, 2, NULL);
     nvs_flash_init(); //nvs for wifi
     wifi_init();// initializes wifi - does not connect
     esp_err_t err = nvs_flash_init_partition(NVS_PARTITION); //nvs for json data
@@ -501,8 +474,7 @@ void app_main(void)
 
     init_ulp_program();
 
-    led_strip_handle_t led_strip;
-    init_led_strip(&led_strip);
+
 
 
 
@@ -513,30 +485,24 @@ void app_main(void)
     ESP_ERROR_CHECK(gpio_install_isr_service(0));
     ESP_ERROR_CHECK(gpio_isr_handler_add(INTERUPT_PIN, gpio_isr_handler, (void *)INTERUPT_PIN));
 
-
-
+    buzzer_init();
+    init_led();
     uint8_t led_value = 255;
     while (1)
     {
         if (led_value > 100)
         {
-            led_value = 30;
+            //led_value = 100;
         }
-        led_strip_set_pixel(led_strip,0,led_value,0,0);
-        led_strip_refresh(led_strip);
-        vTaskDelay(500 / portTICK_PERIOD_MS);
-
-        led_strip_set_pixel(led_strip,0,led_value,led_value,led_value);
-        led_strip_refresh(led_strip);
-        vTaskDelay(500 / portTICK_PERIOD_MS);
-
-        led_strip_set_pixel(led_strip,0,0,led_value,0);
-        led_strip_refresh(led_strip);
-        vTaskDelay(500 / portTICK_PERIOD_MS);
-
-        led_strip_set_pixel(led_strip,0,0,0,led_value);
-        led_strip_refresh(led_strip);
-        vTaskDelay(500 / portTICK_PERIOD_MS);
+        set_led(led_value, led_value, led_value);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        set_led(0, 0, led_value);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        set_led(0, led_value, 0);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        //SEND_CHIRP(chirpQueue, 4);
+        set_led(led_value, 0, 0);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
         led_value = led_value-10;
         ESP_LOGI(TAG, "LED value: %d", led_value);
         //log current time

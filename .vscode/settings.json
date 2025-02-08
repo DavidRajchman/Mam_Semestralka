@@ -14,7 +14,8 @@
         "stdio.h": "c",
         "rfid.h": "c",
         "json_parser.h": "c",
-        "buzzer.h": "c"
+        "buzzer.h": "c",
+        "nvs.h": "c"
     },
     "idf.flashType": "UART"
 }
