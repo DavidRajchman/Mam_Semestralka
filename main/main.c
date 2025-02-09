@@ -154,19 +154,119 @@ void task_RFID_tag_recieved(void *param)
                     if (xQueueReceive(buttonControlQueue, &button_control, xTicksToWait) == pdTRUE)
                     {
                         ESP_LOGI(TAG, "Button %d pressed with command %d", button_control.button_id, button_control.command);
-
+                        wifi_status = get_wifi_status();
+                        time_status = get_time_validity();
                         switch (button_control.command) {
                             case 1:
                                 ESP_LOGI(TAG, "Button %d short press while in task display mode", button_control.button_id);
                                 //set reminder based on option = button_id
                                 fill_type1_reminder_from_task(&task_buffer, &reminder_buffer, button_control.button_id, 0);
-                                uint8_t reminder_id = store_type1_reminder(&reminder_buffer, 0);
+                                int reminder_id = store_type1_reminder(&reminder_buffer, 0);
                                 if (reminder_id > 0)
                                 {
                                     ESP_LOGI(TAG, "Reminder stored successfully with ID %d", reminder_id);
                                     play_chirp(1);
-                                    get_reminder_by_id(reminder_id, &reminder_buffer);
-                                    log_type1_reminder(&reminder_buffer);
+                                    //get_reminder_by_id(reminder_id, &reminder_buffer);
+                                    //log_type1_reminder(&reminder_buffer);
+                                }
+                                else
+                                {
+                                    ESP_LOGE(TAG, "Failed to store reminder");
+                                    //get wifi status and time status
+
+                                    //display message
+                                    if (reminder_id == -1)
+                                    {
+                                        display_message(u8g2_ptr, wifi_status, time_status, "Reminder exists", "long press but1", "to add another", "", 1);
+                                        // Wait for user input
+                                        if (xQueueReceive(buttonControlQueue, &button_control, xTicksToWait) == pdTRUE)
+                                        {
+                                            if (button_control.command == 2 && button_control.button_id == 1)
+                                            {
+                                                ESP_LOGI(TAG, "Reminder adition overide, adding reminder");
+
+                                                //overides and stores reminder
+                                                reminder_id = store_type1_reminder(&reminder_buffer, 1);
+                                                if (reminder_id > 0)
+                                                {
+                                                    ESP_LOGI(TAG, "Reminder stored successfully with ID %d", reminder_id);
+                                                    play_chirp(1);
+                                                    //get_reminder_by_id(reminder_id, &reminder_buffer);
+                                                    //log_type1_reminder(&reminder_buffer);
+                                                }
+                                                else
+                                                {
+                                                    ESP_LOGE(TAG, "Failed to store reminder");
+                                                    display_message(u8g2_ptr, wifi_status, time_status, "Failed to store", "reminder", "", "", 1);
+                                                    vTaskDelay(2000 / portTICK_PERIOD_MS);
+                                                }
+                                            }
+                                            else if (button_control.command == 100)
+                                            [
+                                                ESP_LOGI(TAG, "TASK SHUTDOWN REQUESTED, exiting");
+                                            ]
+
+
+
+                                        }
+                                    }
+                                    else{
+                                    display_message(u8g2_ptr, wifi_status, time_status, "Failed to store", "reminder", "", "", 1);
+                                    vTaskDelay(2000 / portTICK_PERIOD_MS);
+                                    }
+                                }
+
+                                break;
+                            case 2:
+                                ESP_LOGI(TAG, "Button %d long press while in task display mode" , button_control.button_id);
+                                uint8_t additional_option = 0;
+                                display_message(u8g2_ptr, wifi_status, time_status,"Reminder options:", "Press button X", "to set reminder",  "with value of butt.X", 1);
+                                //LONG PRESS MEANS ADITIONAL OPTIONS MENU - SHOW ADITIONAL OPTIONS MENU
+                                if (xQueueReceive(buttonControlQueue, &button_control, xTicksToWait) == pdTRUE)
+                                {
+                                    if (button_control.command == 1)
+                                    {
+                                        ESP_LOGI(TAG, "Button %d short press while in task aditional options mode", button_control.button_id);
+                                        switch (button_control.button_id)
+                                    {
+                                        case 1:
+                                            additional_option = 1;
+                                            break;
+                                        case 2:
+                                            additional_option = 2;
+                                            break;
+                                        case 3:
+                                            additional_option = 3;
+                                            break;
+                                        case 4:
+                                            additional_option = 4;
+                                            break;
+                                        default:
+                                            additional_option = 0;
+                                            break;
+                                    }
+                                    }
+                                    else
+                                    {
+                                        ESP_LOGI(TAG, "Undesired button command %d exiting", button_control.command);
+                                        goto: task_end //TODO
+                                    }
+
+
+
+                                }
+
+
+                                //FROM HERE SAME AS CASE 1
+                                //set reminder based on option = button_id
+                                fill_type1_reminder_from_task(&task_buffer, &reminder_buffer, button_control.button_id, 0);
+                                int reminder_id = store_type1_reminder(&reminder_buffer, 0);
+                                if (reminder_id > 0)
+                                {
+                                    ESP_LOGI(TAG, "Reminder stored successfully with ID %d", reminder_id);
+                                    play_chirp(1);
+                                    //get_reminder_by_id(reminder_id, &reminder_buffer);
+                                    //log_type1_reminder(&reminder_buffer);
                                 }
                                 else
                                 {
@@ -183,9 +283,30 @@ void task_RFID_tag_recieved(void *param)
                                         {
                                             if (button_control.command == 2 && button_control.button_id == 1)
                                             {
-                                                ESP_LOGI(TAG, "adding the reminder anyways", button_control.button_id);
+                                                ESP_LOGI(TAG, "Reminder adition overide, adding reminder");
+
+                                                //overides and stores reminder
+                                                reminder_id = store_type1_reminder(&reminder_buffer, 1);
+                                                if (reminder_id > 0)
+                                                {
+                                                    ESP_LOGI(TAG, "Reminder stored successfully with ID %d", reminder_id);
+                                                    play_chirp(1);
+                                                    //get_reminder_by_id(reminder_id, &reminder_buffer);
+                                                    //log_type1_reminder(&reminder_buffer);
+                                                }
+                                                else
+                                                {
+                                                    ESP_LOGE(TAG, "Failed to store reminder");
+                                                    display_message(u8g2_ptr, wifi_status, time_status, "Failed to store", "reminder", "", "", 1);
+                                                    vTaskDelay(2000 / portTICK_PERIOD_MS);
+                                                }
                                             }
-                                            //TODO
+                                            else if (button_control.command == 100)
+                                            [
+                                                ESP_LOGI(TAG, "TASK SHUTDOWN REQUESTED, exiting");
+                                            ]
+
+
 
                                         }
                                     }
@@ -194,10 +315,6 @@ void task_RFID_tag_recieved(void *param)
                                     vTaskDelay(2000 / portTICK_PERIOD_MS);
                                     }
                                 }
-
-                                break;
-                            case 2:
-                                ESP_LOGI(TAG, "Button %d long pres swhile in task display mode" , button_control.button_id);
                                 break;
                             case 100:
                                 ESP_LOGI(TAG, "TASK SHUTDOWN REQUESTED, exiting");
@@ -211,6 +328,7 @@ void task_RFID_tag_recieved(void *param)
                     {
                         ESP_LOGI(TAG, "No button press detected during task display mode == timeout");
                     }
+                    task_end:
                     //give mutex
                     xSemaphoreGive(display_mutex);
                     button_control_active = 0;
@@ -393,50 +511,6 @@ void task_update_tick(void *params)
     }
 }
 
-void test_reminders(void)
-{
-    static const char *TAG_TEST = "REMINDER_TEST";
-
-    // Prepare a type1 reminder.
-    // Normally you'd do this in app_main or another test function.
-    type1_reminder_t test_reminder = {
-        .Reminder_Type = 1,
-        .Reminder_ID = 0,  // 0 means we'll assign it automatically
-        .Task_ID = 42,
-        .Task_Type = 1,
-        .Task_Option_Selected = 3,
-        .Task_Additional_Option_Selected = 2,
-        .Time_Created = 1681234567,
-        .Time_Snoozed = 0
-    };
-
-    ESP_LOGI(TAG_TEST, "Storing test reminder...");
-    uint8_t new_id = store_type1_reminder(&test_reminder,0);
-    if (new_id == 0) {
-        ESP_LOGE(TAG_TEST, "Failed to store reminder");
-    } else {
-        ESP_LOGI(TAG_TEST, "Successfully stored reminder with ID %u", new_id);
-    }
-
-    // Retrieve all reminders to confirm the store worked.
-    ESP_LOGI(TAG_TEST, "Retrieving all reminders...");
-    type1_reminder_t reminders[10];
-    size_t count = get_all_type1_reminders(reminders, 10);
-    ESP_LOGI(TAG_TEST, "Found %u total reminder(s)", (unsigned)count);
-
-    // Log the details of each reminder.
-    for (size_t i = 0; i < count; i++) {
-        ESP_LOGI(TAG_TEST, "Reminder %u -> Type: %u, ID: %u, TaskID: %u, OptSel: %u, AddOptSel: %u, Created: %ld, Snoozed: %ld",
-                 (unsigned)i,
-                 reminders[i].Reminder_Type,
-                 reminders[i].Reminder_ID,
-                 reminders[i].Task_ID,
-                 reminders[i].Task_Option_Selected,
-                 reminders[i].Task_Additional_Option_Selected,
-                 (long)reminders[i].Time_Created,
-                 (long)reminders[i].Time_Snoozed);
-    }
-}
 
 void app_main(void)
 {
@@ -487,10 +561,9 @@ void app_main(void)
     log_task(2);
     log_task(3);
 
-    test_reminders();
 
     uint8_t led_value = 255;
-    while (0)
+    while (false)
     {
         if (led_value > 100)
         {

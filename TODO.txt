@@ -2,5 +2,7 @@ Dodelat ukladani alarmu a buzeni
     - pouzit idle task. Pri
 Pridat menu show active reminders - bonus
 Pridat stopky
-main.c r 189 // TODO
+
 Odstranit erase nvs na zacatku main
+
+DORESIT GOTO MAIN.C 252

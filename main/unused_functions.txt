@@ -1,0 +1,46 @@
+MAIN.c
+
+void test_reminders(void)
+{
+    static const char *TAG_TEST = "REMINDER_TEST";
+
+    // Prepare a type1 reminder.
+    // Normally you'd do this in app_main or another test function.
+    type1_reminder_t test_reminder = {
+        .Reminder_Type = 1,
+        .Reminder_ID = 0,  // 0 means we'll assign it automatically
+        .Task_ID = 42,
+        .Task_Type = 1,
+        .Task_Option_Selected = 3,
+        .Task_Additional_Option_Selected = 2,
+        .Time_Created = 1681234567,
+        .Time_Snoozed = 0
+    };
+
+    ESP_LOGI(TAG_TEST, "Storing test reminder...");
+    uint8_t new_id = store_type1_reminder(&test_reminder,0);
+    if (new_id == 0) {
+        ESP_LOGE(TAG_TEST, "Failed to store reminder");
+    } else {
+        ESP_LOGI(TAG_TEST, "Successfully stored reminder with ID %u", new_id);
+    }
+
+    // Retrieve all reminders to confirm the store worked.
+    ESP_LOGI(TAG_TEST, "Retrieving all reminders...");
+    type1_reminder_t reminders[10];
+    size_t count = get_all_type1_reminders(reminders, 10);
+    ESP_LOGI(TAG_TEST, "Found %u total reminder(s)", (unsigned)count);
+
+    // Log the details of each reminder.
+    for (size_t i = 0; i < count; i++) {
+        ESP_LOGI(TAG_TEST, "Reminder %u -> Type: %u, ID: %u, TaskID: %u, OptSel: %u, AddOptSel: %u, Created: %ld, Snoozed: %ld",
+                 (unsigned)i,
+                 reminders[i].Reminder_Type,
+                 reminders[i].Reminder_ID,
+                 reminders[i].Task_ID,
+                 reminders[i].Task_Option_Selected,
+                 reminders[i].Task_Additional_Option_Selected,
+                 (long)reminders[i].Time_Created,
+                 (long)reminders[i].Time_Snoozed);
+    }
+}
