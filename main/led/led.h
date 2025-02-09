@@ -2,6 +2,8 @@
 #define LED_H
 
 #include "led_strip.h"
+#include "esp_err.h"
+#include "esp_log.h"
 
 #define LED_GPIO 8
 

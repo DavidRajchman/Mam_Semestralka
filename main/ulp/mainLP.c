@@ -30,6 +30,14 @@ void send_interupt_to_HP(void)
     ulp_lp_core_gpio_set_level(INTERUPT_PIN_LP, 0);
 }
 
+void reset_gpio_output(void)
+{
+    for (int i = 0; i < 4; i++)
+    {
+        gpio_values_output[i] = 0;
+    }
+}
+
 int main (void)
 {
     // Read current button states for 4 buttons.
@@ -74,6 +82,7 @@ int main (void)
                                   (gpio_values_output[1] << 16) |
                                   (gpio_values_output[2] << 8)  |
                                   (gpio_values_output[3]);
+
     }
     else if (send_interupt_flag > 1)
     {
@@ -86,6 +95,7 @@ int main (void)
         button_pressed_num = 10;
         send_interupt_to_HP();
     }
+    reset_gpio_output();
     send_interupt_flag = 0;
 
     return 0;
