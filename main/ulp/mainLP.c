@@ -9,10 +9,17 @@
 
 #define INTERUPT_PIN_LP 0
 
-#define BUTTON1_PIN_LP 4
-#define BUTTON2_PIN_LP 5
-#define BUTTON3_PIN_LP 6
-#define BUTTON4_PIN_LP 7
+////standard button order
+//#define BUTTON1_PIN_LP 4
+//#define BUTTON2_PIN_LP 5
+//#define BUTTON3_PIN_LP 6
+//#define BUTTON4_PIN_LP 7
+
+//reverse button order
+#define BUTTON1_PIN_LP 7
+#define BUTTON2_PIN_LP 6
+#define BUTTON3_PIN_LP 5
+#define BUTTON4_PIN_LP 4
 
 uint16_t press_counter[4] = {0};
 uint32_t gpio_values[4] = {0};

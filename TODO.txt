@@ -1,8 +1,8 @@
-Dodelat ukladani alarmu a buzeni
-    - pouzit idle task. Pri
-Pridat menu show active reminders - bonus
-Pridat stopky
+Dodelat buzeni
+    - pouzit idle task.
+Pridat menu show active reminders
+Pridat stopky - bonus
 
 Odstranit erase nvs na zacatku main
 
-DORESIT GOTO MAIN.C 252
+void task_running_reminders(void *params)

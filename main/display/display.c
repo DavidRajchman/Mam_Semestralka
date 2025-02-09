@@ -95,7 +95,7 @@ void init_ssd1306_display(u8g2_t *u8g2)
  * @param wifi_status  0 for OK, non-zero otherwise
  * @param time_status  0 for OK, non-zero otherwise
  */
-static void render_top_info_bar(u8g2_t *u8g2, uint8_t wifi_status, uint8_t time_status)
+void render_top_info_bar(u8g2_t *u8g2, uint8_t wifi_status, uint8_t time_status)
 {
     u8g2_DrawBox(u8g2, 0, 0, 127, 9);
 
@@ -289,12 +289,12 @@ void display_message(u8g2_t *u8g2, uint8_t wifi_status, uint8_t time_status, con
     // Render the top info bar with WiFi and Time status
     render_top_info_bar(u8g2, wifi_status, time_status);
 
-    // Draw line2 at y = 22
-    pad_line(line2, buf, center);
+    // Draw line1 at y = 22
+    pad_line(line1, buf, center);
     u8g2_DrawStr(u8g2, 2, 22, buf);
 
-    // Draw line1 at y = 35
-    pad_line(line1, buf, center);
+    // Draw line2 at y = 35
+    pad_line(line2, buf, center);
     u8g2_DrawStr(u8g2, 2, 35, buf);
 
     // Draw line3 at y = 47
@@ -308,3 +308,4 @@ void display_message(u8g2_t *u8g2, uint8_t wifi_status, uint8_t time_status, con
     // Send buffer to the display
     u8g2_SendBuffer(u8g2);
 }
+

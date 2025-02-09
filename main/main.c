@@ -58,6 +58,8 @@ uint wifi_delay_cycles = 0; //delay cycles for wifi connection if previous conne
 u8g2_t u8g2;
 u8g2_t *u8g2_ptr = NULL;
 
+
+
 void LP_gpio_inicializace(uint8_t gpio_num)
 {
     rtc_gpio_init(gpio_num);
@@ -106,7 +108,8 @@ void init_ulp_program_and_gpio(void)
 void task_RFID_tag_recieved(void *param)
 {
     char *rfid_key = (char *)param;
-
+    int reminder_id = 0;
+    bool exit_task = false;
     int task_id = get_task_id_by_rfid(rfid_key);
     if (task_id < 0)
     {
@@ -161,10 +164,10 @@ void task_RFID_tag_recieved(void *param)
                                 ESP_LOGI(TAG, "Button %d short press while in task display mode", button_control.button_id);
                                 //set reminder based on option = button_id
                                 fill_type1_reminder_from_task(&task_buffer, &reminder_buffer, button_control.button_id, 0);
-                                int reminder_id = store_type1_reminder(&reminder_buffer, 0);
+                                reminder_id = store_type1_reminder(&reminder_buffer, 0);
                                 if (reminder_id > 0)
                                 {
-                                    ESP_LOGI(TAG, "Reminder stored successfully with ID %d", reminder_id);
+                                    ESP_LOGI(TAG, "Reminder stored with option %d successfully with ID %d",reminder_buffer.Task_Option_Selected, reminder_id);
                                     play_chirp(1);
                                     //get_reminder_by_id(reminder_id, &reminder_buffer);
                                     //log_type1_reminder(&reminder_buffer);
@@ -181,7 +184,7 @@ void task_RFID_tag_recieved(void *param)
                                         // Wait for user input
                                         if (xQueueReceive(buttonControlQueue, &button_control, xTicksToWait) == pdTRUE)
                                         {
-                                            if (button_control.command == 2 && button_control.button_id == 1)
+                                            if (button_control.command == 2 && button_control.button_id == 0)
                                             {
                                                 ESP_LOGI(TAG, "Reminder adition overide, adding reminder");
 
@@ -189,7 +192,8 @@ void task_RFID_tag_recieved(void *param)
                                                 reminder_id = store_type1_reminder(&reminder_buffer, 1);
                                                 if (reminder_id > 0)
                                                 {
-                                                    ESP_LOGI(TAG, "Reminder stored successfully with ID %d", reminder_id);
+                                                    ESP_LOGI(TAG, "Reminder stored with option %d successfully with ID %d",reminder_buffer.Task_Option_Selected, reminder_id);
+
                                                     play_chirp(1);
                                                     //get_reminder_by_id(reminder_id, &reminder_buffer);
                                                     //log_type1_reminder(&reminder_buffer);
@@ -202,9 +206,9 @@ void task_RFID_tag_recieved(void *param)
                                                 }
                                             }
                                             else if (button_control.command == 100)
-                                            [
+                                            {
                                                 ESP_LOGI(TAG, "TASK SHUTDOWN REQUESTED, exiting");
-                                            ]
+                                            }
 
 
 
@@ -249,70 +253,73 @@ void task_RFID_tag_recieved(void *param)
                                     else
                                     {
                                         ESP_LOGI(TAG, "Undesired button command %d exiting", button_control.command);
-                                        goto: task_end //TODO
+                                        exit_task = true;
                                     }
 
 
 
                                 }
 
+                                if (!exit_task)
+                                {
 
-                                //FROM HERE SAME AS CASE 1
-                                //set reminder based on option = button_id
-                                fill_type1_reminder_from_task(&task_buffer, &reminder_buffer, button_control.button_id, 0);
-                                int reminder_id = store_type1_reminder(&reminder_buffer, 0);
-                                if (reminder_id > 0)
-                                {
-                                    ESP_LOGI(TAG, "Reminder stored successfully with ID %d", reminder_id);
-                                    play_chirp(1);
-                                    //get_reminder_by_id(reminder_id, &reminder_buffer);
-                                    //log_type1_reminder(&reminder_buffer);
-                                }
-                                else
-                                {
-                                    ESP_LOGE(TAG, "Failed to store reminder");
-                                    //get wifi status and time status
-                                    wifi_status = get_wifi_status();
-                                    time_status = get_time_validity();
-                                    //display message
-                                    if (reminder_id == -1)
+                                    //FROM HERE SAME AS CASE 1 except additional_option is set
+                                    //set reminder based on option = button_id
+                                    fill_type1_reminder_from_task(&task_buffer, &reminder_buffer, button_control.button_id, additional_option);
+                                    reminder_id = store_type1_reminder(&reminder_buffer, 0);
+                                    if (reminder_id > 0)
                                     {
-                                        display_message(u8g2_ptr, wifi_status, time_status, "Reminder exists", "long press but1", "to add another", "", 1);
-                                        // Wait for user input
-                                        if (xQueueReceive(buttonControlQueue, &button_control, xTicksToWait) == pdTRUE)
-                                        {
-                                            if (button_control.command == 2 && button_control.button_id == 1)
-                                            {
-                                                ESP_LOGI(TAG, "Reminder adition overide, adding reminder");
-
-                                                //overides and stores reminder
-                                                reminder_id = store_type1_reminder(&reminder_buffer, 1);
-                                                if (reminder_id > 0)
-                                                {
-                                                    ESP_LOGI(TAG, "Reminder stored successfully with ID %d", reminder_id);
-                                                    play_chirp(1);
-                                                    //get_reminder_by_id(reminder_id, &reminder_buffer);
-                                                    //log_type1_reminder(&reminder_buffer);
-                                                }
-                                                else
-                                                {
-                                                    ESP_LOGE(TAG, "Failed to store reminder");
-                                                    display_message(u8g2_ptr, wifi_status, time_status, "Failed to store", "reminder", "", "", 1);
-                                                    vTaskDelay(2000 / portTICK_PERIOD_MS);
-                                                }
-                                            }
-                                            else if (button_control.command == 100)
-                                            [
-                                                ESP_LOGI(TAG, "TASK SHUTDOWN REQUESTED, exiting");
-                                            ]
-
-
-
-                                        }
+                                        ESP_LOGI(TAG, "Reminder stored with option %d, additonal option %d | successfully with ID %d",reminder_buffer.Task_Option_Selected,reminder_buffer.Task_Additional_Option_Selected, reminder_id);
+                                        play_chirp(1);
+                                        //get_reminder_by_id(reminder_id, &reminder_buffer);
+                                        //log_type1_reminder(&reminder_buffer);
                                     }
-                                    else{
-                                    display_message(u8g2_ptr, wifi_status, time_status, "Failed to store", "reminder", "", "", 1);
-                                    vTaskDelay(2000 / portTICK_PERIOD_MS);
+                                    else
+                                    {
+                                        ESP_LOGE(TAG, "Failed to store reminder");
+                                        //get wifi status and time status
+                                        wifi_status = get_wifi_status();
+                                        time_status = get_time_validity();
+                                        //display message
+                                        if (reminder_id == -1)
+                                        {
+                                            display_message(u8g2_ptr, wifi_status, time_status, "Reminder exists", "long press but1", "to add another", "", 1);
+                                            // Wait for user input
+                                            if (xQueueReceive(buttonControlQueue, &button_control, xTicksToWait) == pdTRUE)
+                                            {
+                                                if (button_control.command == 2 && button_control.button_id == 1)
+                                                {
+                                                    ESP_LOGI(TAG, "Reminder adition overide, adding reminder");
+
+                                                    //overides and stores reminder
+                                                    reminder_id = store_type1_reminder(&reminder_buffer, 1);
+                                                    if (reminder_id > 0)
+                                                    {
+                                                        ESP_LOGI(TAG, "Reminder stored with option %d successfully with ID %d",reminder_buffer.Task_Option_Selected, reminder_id);
+                                                        play_chirp(1);
+                                                        //get_reminder_by_id(reminder_id, &reminder_buffer);
+                                                        //log_type1_reminder(&reminder_buffer);
+                                                    }
+                                                    else
+                                                    {
+                                                        ESP_LOGE(TAG, "Failed to store reminder");
+                                                        display_message(u8g2_ptr, wifi_status, time_status, "Failed to store", "reminder", "", "", 1);
+                                                        vTaskDelay(2000 / portTICK_PERIOD_MS);
+                                                    }
+                                                }
+                                                else if (button_control.command == 100)
+                                                {
+                                                    ESP_LOGI(TAG, "TASK SHUTDOWN REQUESTED, exiting");
+                                                }
+
+
+
+                                            }
+                                        }
+                                        else{
+                                        display_message(u8g2_ptr, wifi_status, time_status, "Failed to store", "reminder", "", "", 1);
+                                        vTaskDelay(2000 / portTICK_PERIOD_MS);
+                                        }
                                     }
                                 }
                                 break;
@@ -328,7 +335,7 @@ void task_RFID_tag_recieved(void *param)
                     {
                         ESP_LOGI(TAG, "No button press detected during task display mode == timeout");
                     }
-                    task_end:
+
                     //give mutex
                     xSemaphoreGive(display_mutex);
                     button_control_active = 0;
@@ -352,6 +359,7 @@ void task_RFID_tag_recieved(void *param)
         ESP_LOGE(TAG, "No task JSON retrieved for RFID key");
     }
     ESP_LOGI(TAG, "RFID task task_RFID_tag_recieved finished");
+    rfid_tag_recieved_task_handle = NULL;
     vTaskDelete(NULL);
 }
 
@@ -376,11 +384,17 @@ void shutdown_rfid_tag_recieved_task(TaskHandle_t task)
     button_control.button_id = 0;
     button_control.command = 100;
     xQueueSend(buttonControlQueue, &button_control, 0);
+    uint8_t timeout = 0;
 
+    eTaskState state = eTaskGetState(task);
     //while true loop waiting for task state to be deleted
-    while (eTaskGetState(task) != eDeleted)
+    while (state != eDeleted && state != eReady && task != NULL && timeout < 200)
     {
         vTaskDelay(10 / portTICK_PERIOD_MS);
+        //log task state
+        state = eTaskGetState(task);
+        ESP_LOGI(TAG, "Task state: %d", state);
+        timeout++;
     }
     ESP_LOGI(TAG, "Task has been deleted");
     task = NULL;
@@ -417,6 +431,7 @@ void on_RFID_state_changed(void *arg, esp_event_base_t base, int32_t event_id, v
             ESP_LOGI(TAG, "Task already running - shutting down");
             shutdown_rfid_tag_recieved_task(rfid_tag_recieved_task_handle);
         }
+        vTaskDelay(20 / portTICK_PERIOD_MS);
         xTaskCreate(task_RFID_tag_recieved, "task_RFID_tag_recieved", 4096, rfid_key, 1, &rfid_tag_recieved_task_handle);
 
 
@@ -511,6 +526,163 @@ void task_update_tick(void *params)
     }
 }
 
+/*
+   Task: task_running_reminders
+   - Displays a menu of running reminders using the proper reminder API.
+   - Top menu (list mode): shows up to 4 reminders per page.
+     Format per line: "<Reminder_ID>: <Option text>"
+     The current selection is highlighted.
+   - Detail view (bottom layer): displays details for the selected reminder:
+       Line1: "Option: <Option text>"
+       Line2: "Add. Opt: <Task_Additional_Option_Selected>"
+       Line3: "Date: <DD,MM,YYYY>" (from Time_Created)
+   - Navigation:
+       Button 0: Up
+       Button 1: Down
+       Button 2: Confirm (enter detail view)
+       Button 3: Back (exit detail view or exit the menu)
+   - Uses the buttonControlQueue. Takes the display_mutex before drawing.
+*/
+static const char *TAG_RM = "reminder_menu";
+
+void task_running_reminders(void *params)
+{
+    int current_index = 0; // Index into the reminders list
+    bool detail_mode = false;
+    const int items_per_page = 4;
+    int page_start = 0;
+    button_control_t btn;
+    uint8_t wifi_status = 0, time_status = 0; // Example status values
+
+    while (1) {
+        // Get the current number of reminders.
+        size_t total = get_num_of_reminders();
+        // Allocate an array to hold the reminders, if any.
+        type1_reminder_t *reminders = NULL;
+        if (total > 0) {
+            reminders = malloc(total * sizeof(type1_reminder_t));
+            if (reminders) {
+                total = get_all_type1_reminders(reminders, total);
+            } else {
+                ESP_LOGE(TAG_RM, "Memory allocation failed for reminders");
+                total = 0;
+            }
+        }
+
+        // Ensure current_index is within bounds.
+        if (total == 0) {
+            current_index = 0;
+        } else if (current_index >= (int)total) {
+            current_index = total - 1;
+        }
+
+        // Draw the menu.
+        if(xSemaphoreTake(display_mutex, 1000/portTICK_PERIOD_MS)) {
+            u8g2_ClearBuffer(u8g2_ptr);
+            wifi_status = get_wifi_status();
+            time_status = get_time_validity();
+            render_top_info_bar(u8g2_ptr, wifi_status, time_status);
+
+            if (!detail_mode) {
+                // List mode: show up to 4 reminders per page.
+                page_start = (current_index / items_per_page) * items_per_page;
+                for (int row = 0; row < items_per_page; row++) {
+                    int idx = page_start + row;
+                    char buf[40] = "";
+                    int y;
+                    if (idx < (int)total && reminders != NULL) {
+                        // Retrieve the task option display text via task reference.
+                        task_t *task = get_task_by_id(reminders[idx].Task_ID);
+                        const char *opt_text = (task != NULL) ?
+                            task->Options[reminders[idx].Task_Option_Selected].display_text : "N/A";
+                        snprintf(buf, sizeof(buf), "%d: %s", reminders[idx].Reminder_ID, opt_text);
+                    }
+                    // Set vertical position.
+                    switch (row) {
+                        case 0: y = 22; break;
+                        case 1: y = 35; break;
+                        case 2: y = 47; break;
+                        case 3: y = 59; break;
+                        default: y = 22; break;
+                    }
+                    // Highlight current selection.
+                    if (idx == current_index && idx < (int)total) {
+                        u8g2_SetDrawColor(u8g2_ptr, 1);
+                        u8g2_DrawBox(u8g2_ptr, 0, y - 12, u8g2_GetDisplayWidth(u8g2_ptr), 14);
+                        u8g2_SetDrawColor(u8g2_ptr, 0);
+                        u8g2_DrawStr(u8g2_ptr, 2, y, buf);
+                        u8g2_SetDrawColor(u8g2_ptr, 1);
+                    } else {
+                        u8g2_DrawStr(u8g2_ptr, 2, y, buf);
+                    }
+                }
+                u8g2_SendBuffer(u8g2_ptr);
+            } else {
+                // Detail mode: show details for the selected reminder.
+                if (current_index < (int)total && reminders != NULL) {
+                    type1_reminder_t *rem = &reminders[current_index];
+                    task_t *task = get_task_by_id(rem->Task_ID);
+                    const char *opt_text = (task != NULL) ?
+                        task->Options[rem->Task_Option_Selected].display_text : "N/A";
+                    char line1[32], line2[32], line3[32], line4[32];
+                    snprintf(line1, sizeof(line1), "Option: %s", opt_text);
+                    snprintf(line2, sizeof(line2), "Add. Opt: %d", rem->Task_Additional_Option_Selected);
+                    char date_str[16];
+                    {
+                        struct tm *tm_info = localtime(&rem->Time_Created);
+                        if (tm_info) {
+                            snprintf(date_str, sizeof(date_str), "%02d,%02d,%04d", tm_info->tm_mday, tm_info->tm_mon + 1, tm_info->tm_year + 1900);
+                        } else {
+                            strncpy(date_str, "00,00,0000", sizeof(date_str));
+                        }
+                    }
+                    snprintf(line3, sizeof(line3), "Date: %s", date_str);
+                    strcpy(line4, "");
+                    display_message(u8g2_ptr, wifi_status, time_status, line1, line2, line3, line4, 1);
+                }
+            }
+            xSemaphoreGive(display_mutex);
+        }
+
+        // Free the reminders array.
+        if (reminders) {
+            free(reminders);
+            reminders = NULL;
+        }
+
+        // Wait for button input.
+        if (xQueueReceive(buttonControlQueue, &btn, pdMS_TO_TICKS(250)) == pdTRUE) {
+            if (!detail_mode) {
+                // List mode navigation.
+                switch (btn.button_id) {
+                    case 0: // Up
+                        if (current_index > 0)
+                            current_index--;
+                        break;
+                    case 1: // Down
+                        // Get total reminders again to check bounds.
+                        if (current_index < 0) current_index = 0;
+                        if (current_index < (int)get_num_of_reminders() - 1)
+                            current_index++;
+                        break;
+                    case 2: // Confirm - enter detail view.
+                        detail_mode = true;
+                        break;
+                    case 3: // Back - exit menu task.
+                        ESP_LOGI(TAG_RM, "Exiting reminders menu.");
+                        vTaskDelete(NULL);
+                        break;
+                    default:
+                        break;
+                }
+            } else {
+                // Detail mode: Back returns to list mode.
+                if (btn.button_id == 3)
+                    detail_mode = false;
+            }
+        }
+    }
+}
 
 void app_main(void)
 {

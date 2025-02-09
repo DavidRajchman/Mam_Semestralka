@@ -21,5 +21,7 @@
         "nvs_config.h": "c",
         "timetable.h": "c"
     },
-    "idf.flashType": "UART"
+    "idf.flashType": "UART",
+    "workbench.colorCustomizations": {
+        "panelStickyScroll.background": "#388ac5"}
 }
