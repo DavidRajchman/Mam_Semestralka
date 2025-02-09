@@ -1,2 +1,6 @@
-Dodelat SNTP sync - task ktery jednou denne spusti wifi, synchronizuje cas a wifi vypne
 Dodelat ukladani alarmu a buzeni
+    - pouzit idle task. Pri
+Pridat menu show active reminders - bonus
+Pridat stopky
+main.c r 189 // TODO
+Odstranit erase nvs na zacatku main

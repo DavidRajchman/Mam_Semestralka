@@ -236,3 +236,75 @@ void display_idle_clock_screen(u8g2_t *u8g2, uint8_t wifi_status, uint8_t time_s
     // Send the buffer to the display
     u8g2_SendBuffer(u8g2);
 }
+
+
+// Helper function to pad the input line to a width of 23 characters
+// by adding leading spaces. The result is written into dest.
+static void pad_line(const char *line, char *dest, int center)
+{
+    const int maxWidth = 23;
+    int len = strlen(line);
+    if (len > maxWidth) {
+        len = maxWidth;
+    }
+    if (center && len < maxWidth) {
+        int pad = (maxWidth - len) / 2;
+        memset(dest, ' ', pad);
+        memcpy(dest + pad, line, len);
+        dest[pad + len] = '\0';
+    } else {
+        // Copy up to maxWidth characters and null-terminate
+        strncpy(dest, line, maxWidth);
+        dest[maxWidth] = '\0';
+    }
+}
+
+/**
+ * @brief Display a message composed of a header and 4 lines.
+ *
+ * The function accepts four strings (each maximum 23 characters, excluding terminator)
+ * and a center parameter. If center is non-zero, each line (including header)
+ * will be centered in a 23-character field by prepending spaces.
+ *
+ * The header is displayed at a fixed position (y = 12).
+ * The four message lines are displayed at y positions 22, 35, 47, and 59 respectively.
+ *
+ * @param u8g2   Pointer to an initialized u8g2 display context.
+ * @param wifi_status 0 if WiFi is OK; non-zero otherwise.
+ * @param time_status 0 if time is OK; non-zero otherwise.
+ * @param line1  String for line 1.
+ * @param line2  String for line 2.
+ * @param line3  String for line 3.
+ * @param line4  String for line 4.
+ * @param center If non-zero, center each line.
+ */
+void display_message(u8g2_t *u8g2, uint8_t wifi_status, uint8_t time_status, const char *line1, const char *line2,
+                     const char *line3, const char *line4, int center)
+{
+    char buf[24]; // Buffer for a padded line (23 characters + null terminator)
+
+    // Clear display buffer
+    u8g2_ClearBuffer(u8g2);
+
+    // Render the top info bar with WiFi and Time status
+    render_top_info_bar(u8g2, wifi_status, time_status);
+
+    // Draw line2 at y = 22
+    pad_line(line2, buf, center);
+    u8g2_DrawStr(u8g2, 2, 22, buf);
+
+    // Draw line1 at y = 35
+    pad_line(line1, buf, center);
+    u8g2_DrawStr(u8g2, 2, 35, buf);
+
+    // Draw line3 at y = 47
+    pad_line(line3, buf, center);
+    u8g2_DrawStr(u8g2, 2, 47, buf);
+
+    // Draw line4 at y = 59
+    pad_line(line4, buf, center);
+    u8g2_DrawStr(u8g2, 2, 59, buf);
+
+    // Send buffer to the display
+    u8g2_SendBuffer(u8g2);
+}

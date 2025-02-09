@@ -55,20 +55,23 @@ static void buttons_interrupt_task(void *params)
                     ulp_gpio_values_single_var = 0;
                     for (int i = 0; i < 4; i++)
                     {
-                        if (button_values[i] == 1)
+                        if (button_values[i] != 0)
                         {
-                            ESP_LOGI(TAG, "Button %d pressed", i);
-                        }
-                        else if (button_values[i] == 2)
-                        {
-                            ESP_LOGI(TAG, "Button %d long pressed", i);
-                        }
-                        if (button_control_active == 1)
-                        {
-                            button_control_t button_control;
-                            button_control.button_id = i;
-                            button_control.command = button_values[i];
-                            xQueueSend(buttonControlQueue_local, &button_control, 0);
+                            if (button_values[i] == 1)
+                            {
+                                ESP_LOGI(TAG, "Button %d pressed", i);
+                            }
+                            else if (button_values[i] == 2)
+                            {
+                                ESP_LOGI(TAG, "Button %d long pressed", i);
+                            }
+                            if (button_control_active == 1)
+                            {
+                                button_control_t button_control;
+                                button_control.button_id = i;
+                                button_control.command = button_values[i];
+                                xQueueSend(buttonControlQueue_local, &button_control, 0);
+                            }
                         }
                     }
 

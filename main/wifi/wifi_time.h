@@ -11,7 +11,7 @@
 #include <time.h>
 
 //CONFIGURATION
-#define TIME_VALIDITY_MINUTES 1 // Time is considered valid for 15 minutes after synchronization
+#define TIME_VALIDITY_MINUTES 60 // Time is considered valid for 15 minutes after synchronization
 #define TIMEZONE "CET-1CEST,M3.5.0,M10.5.0/3" //timezone env - set in wifi init
 
 // WiFi status definitions

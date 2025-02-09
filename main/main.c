@@ -51,6 +51,7 @@ uint8_t button_control_active = 0; //flag for button - commands will be sent int
 SemaphoreHandle_t display_mutex = NULL;
 
 TaskHandle_t wifiTimeSyncTaskHandle = NULL;
+TaskHandle_t rfid_tag_recieved_task_handle = NULL;
 uint wifi_fail_counter = 0;
 uint wifi_delay_cycles = 0; //delay cycles for wifi connection if previous connection failed - 1 cycle per update task
 
@@ -119,6 +120,7 @@ void task_RFID_tag_recieved(void *param)
     if (task_json != NULL)
     {
         task_t task_buffer;
+        type1_reminder_t reminder_buffer;
         if (!parse_task_json(task_json, &task_buffer))
         {
             ESP_LOGE(TAG, "Failed to parse task JSON for RFID key");
@@ -151,14 +153,58 @@ void task_RFID_tag_recieved(void *param)
                     TickType_t xTicksToWait = pdMS_TO_TICKS(WAIT_FOR_USER_INPUT_TIMEOUT_MS);
                     if (xQueueReceive(buttonControlQueue, &button_control, xTicksToWait) == pdTRUE)
                     {
-                        ESP_LOGI(TAG, "Button %d pressed while in task display mode", button_control.button_id);
-                        if (button_control.command == 1)
-                        {
-                            ESP_LOGI(TAG, "Button %d short press while in task display mode", button_control.button_id);
-                        }
-                        else if (button_control.command == 2)
-                        {
-                            ESP_LOGI(TAG, "Button %d long pres swhile in task display mode" , button_control.button_id);
+                        ESP_LOGI(TAG, "Button %d pressed with command %d", button_control.button_id, button_control.command);
+
+                        switch (button_control.command) {
+                            case 1:
+                                ESP_LOGI(TAG, "Button %d short press while in task display mode", button_control.button_id);
+                                //set reminder based on option = button_id
+                                fill_type1_reminder_from_task(&task_buffer, &reminder_buffer, button_control.button_id, 0);
+                                uint8_t reminder_id = store_type1_reminder(&reminder_buffer, 0);
+                                if (reminder_id > 0)
+                                {
+                                    ESP_LOGI(TAG, "Reminder stored successfully with ID %d", reminder_id);
+                                    play_chirp(1);
+                                    get_reminder_by_id(reminder_id, &reminder_buffer);
+                                    log_type1_reminder(&reminder_buffer);
+                                }
+                                else
+                                {
+                                    ESP_LOGE(TAG, "Failed to store reminder");
+                                    //get wifi status and time status
+                                    wifi_status = get_wifi_status();
+                                    time_status = get_time_validity();
+                                    //display message
+                                    if (reminder_id == -1)
+                                    {
+                                        display_message(u8g2_ptr, wifi_status, time_status, "Reminder exists", "long press but1", "to add another", "", 1);
+                                        // Wait for user input
+                                        if (xQueueReceive(buttonControlQueue, &button_control, xTicksToWait) == pdTRUE)
+                                        {
+                                            if (button_control.command == 2 && button_control.button_id == 1)
+                                            {
+                                                ESP_LOGI(TAG, "adding the reminder anyways", button_control.button_id);
+                                            }
+                                            //TODO
+
+                                        }
+                                    }
+                                    else{
+                                    display_message(u8g2_ptr, wifi_status, time_status, "Failed to store", "reminder", "", "", 1);
+                                    vTaskDelay(2000 / portTICK_PERIOD_MS);
+                                    }
+                                }
+
+                                break;
+                            case 2:
+                                ESP_LOGI(TAG, "Button %d long pres swhile in task display mode" , button_control.button_id);
+                                break;
+                            case 100:
+                                ESP_LOGI(TAG, "TASK SHUTDOWN REQUESTED, exiting");
+                                break;
+                            default:
+                                ESP_LOGI(TAG, "Unknown button command %d", button_control.command);
+                                break;
                         }
                     }
                     else
@@ -167,6 +213,7 @@ void task_RFID_tag_recieved(void *param)
                     }
                     //give mutex
                     xSemaphoreGive(display_mutex);
+                    button_control_active = 0;
                 }
                 else
                 {
@@ -186,7 +233,39 @@ void task_RFID_tag_recieved(void *param)
     {
         ESP_LOGE(TAG, "No task JSON retrieved for RFID key");
     }
+    ESP_LOGI(TAG, "RFID task task_RFID_tag_recieved finished");
     vTaskDelete(NULL);
+}
+
+
+
+/**
+ * @brief Sends a shutdown command to the button control queue
+ *
+ * This function creates a button control message with ID 0 and command 100,
+ * which signals a shutdown command, and sends it to the buttonControlQueue.
+ * Used when a new RFID tag is detected while a task is already running.
+ * It will wait until the task is finished
+ */
+void shutdown_rfid_tag_recieved_task(TaskHandle_t task)
+{
+    if (task == NULL)
+    {
+        ESP_LOGE(TAG, "Task handle is NULL");
+        return;
+    }
+    button_control_t button_control;
+    button_control.button_id = 0;
+    button_control.command = 100;
+    xQueueSend(buttonControlQueue, &button_control, 0);
+
+    //while true loop waiting for task state to be deleted
+    while (eTaskGetState(task) != eDeleted)
+    {
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
+    ESP_LOGI(TAG, "Task has been deleted");
+    task = NULL;
 }
 
 void on_RFID_state_changed(void *arg, esp_event_base_t base, int32_t event_id, void *data)
@@ -214,7 +293,13 @@ void on_RFID_state_changed(void *arg, esp_event_base_t base, int32_t event_id, v
             ESP_LOGE(TAG, "Failed to allocate memory for RFID key");
             return;
         }
-        xTaskCreate(task_RFID_tag_recieved, "task_RFID_tag_recieved", 4096, rfid_key, 1, NULL);
+        //if there is a task already running, delete it
+        if (rfid_tag_recieved_task_handle != NULL)
+        {
+            ESP_LOGI(TAG, "Task already running - shutting down");
+            shutdown_rfid_tag_recieved_task(rfid_tag_recieved_task_handle);
+        }
+        xTaskCreate(task_RFID_tag_recieved, "task_RFID_tag_recieved", 4096, rfid_key, 1, &rfid_tag_recieved_task_handle);
 
 
 
@@ -308,8 +393,59 @@ void task_update_tick(void *params)
     }
 }
 
+void test_reminders(void)
+{
+    static const char *TAG_TEST = "REMINDER_TEST";
+
+    // Prepare a type1 reminder.
+    // Normally you'd do this in app_main or another test function.
+    type1_reminder_t test_reminder = {
+        .Reminder_Type = 1,
+        .Reminder_ID = 0,  // 0 means we'll assign it automatically
+        .Task_ID = 42,
+        .Task_Type = 1,
+        .Task_Option_Selected = 3,
+        .Task_Additional_Option_Selected = 2,
+        .Time_Created = 1681234567,
+        .Time_Snoozed = 0
+    };
+
+    ESP_LOGI(TAG_TEST, "Storing test reminder...");
+    uint8_t new_id = store_type1_reminder(&test_reminder,0);
+    if (new_id == 0) {
+        ESP_LOGE(TAG_TEST, "Failed to store reminder");
+    } else {
+        ESP_LOGI(TAG_TEST, "Successfully stored reminder with ID %u", new_id);
+    }
+
+    // Retrieve all reminders to confirm the store worked.
+    ESP_LOGI(TAG_TEST, "Retrieving all reminders...");
+    type1_reminder_t reminders[10];
+    size_t count = get_all_type1_reminders(reminders, 10);
+    ESP_LOGI(TAG_TEST, "Found %u total reminder(s)", (unsigned)count);
+
+    // Log the details of each reminder.
+    for (size_t i = 0; i < count; i++) {
+        ESP_LOGI(TAG_TEST, "Reminder %u -> Type: %u, ID: %u, TaskID: %u, OptSel: %u, AddOptSel: %u, Created: %ld, Snoozed: %ld",
+                 (unsigned)i,
+                 reminders[i].Reminder_Type,
+                 reminders[i].Reminder_ID,
+                 reminders[i].Task_ID,
+                 reminders[i].Task_Option_Selected,
+                 reminders[i].Task_Additional_Option_Selected,
+                 (long)reminders[i].Time_Created,
+                 (long)reminders[i].Time_Snoozed);
+    }
+}
+
 void app_main(void)
 {
+    //FOR TESTING
+    //ERASE NVS PARTITION DATA
+    ESP_ERROR_CHECK(nvs_flash_erase_partition(NVS_PARTITION));
+
+
+
     interruptQueue = xQueueCreate(10, sizeof(int));
     buttonControlQueue = xQueueCreate(10, sizeof(button_control_t));
     display_mutex = xSemaphoreCreateMutex();
@@ -325,16 +461,20 @@ void app_main(void)
     esp_err_t err = nvs_flash_init_partition(NVS_PARTITION); //nvs for json data
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Failed to initialize NVS partition: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "Failed to initialize custom NVS partition: %s", esp_err_to_name(err));
         return;
     }
+
+
+
+
     init_ssd1306_display(&u8g2);
     rfid_setup(on_RFID_state_changed);
 
 
-    xTaskCreate(play_chirp_task, "play_chirp_task", 2048, (void *)chirpQueue, 2, NULL);
+    xTaskCreate(play_chirp_task, "play_chirp_task", 2048, (void *)chirpQueue, 3, NULL);
     xTaskCreate(wifi_sync_sntp_time_once_task, "wifi_sync_sntp_time_once_task", 8000, (void*)wifi_credentials, 1, &wifiTimeSyncTaskHandle);
-    xTaskCreate(task_update_tick, "task_update_tick", 4096, NULL, 1, NULL);
+    xTaskCreate(task_update_tick, "task_update_tick", 4096, NULL, 2, NULL);
 
 
     set_default_timetables();
@@ -347,9 +487,10 @@ void app_main(void)
     log_task(2);
     log_task(3);
 
+    test_reminders();
 
     uint8_t led_value = 255;
-    while (1)
+    while (0)
     {
         if (led_value > 100)
         {

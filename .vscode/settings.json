@@ -18,7 +18,8 @@
         "nvs.h": "c",
         "buttons.h": "c",
         "rtc_io.h": "c",
-        "nvs_config.h": "c"
+        "nvs_config.h": "c",
+        "timetable.h": "c"
     },
     "idf.flashType": "UART"
 }
