@@ -434,6 +434,7 @@ void on_RFID_state_changed(void *arg, esp_event_base_t base, int32_t event_id, v
             ESP_LOGE(TAG, "Failed to allocate memory for RFID key");
             return;
         }
+        SEND_CHIRP(chirpQueue, 5);
         //if there is a task already running, delete it
         if (rfid_tag_recieved_task_handle != NULL)
         {
@@ -804,15 +805,15 @@ void app_main(void)
 
 
     set_default_timetables();
-    log_timetable(1);
-    log_timetable(2);
-    log_timetable(3);
-    log_timetable(0);
+    //log_timetable(1);
+    //log_timetable(2);
+    //log_timetable(3);
+    //log_timetable(0);
 
     set_default_tasks();
-    log_task(1);
-    log_task(2);
-    log_task(3);
+    //log_task(1);
+    //log_task(2);
+    //log_task(3);
 
     //alarm execution init
     alarm_execution_init(chirpQueue,display_mutex,u8g2_ptr);

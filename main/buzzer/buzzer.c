@@ -76,16 +76,8 @@ void play_chirp(uint8_t chirpID)
         vTaskDelay(30 / portTICK_PERIOD_MS); // Quiet time
         play_tone(NOTE_E3, 150);
         break;
-    case 5:
-        play_tone(NOTE_C4, 200);
-         vTaskDelay(50 / portTICK_PERIOD_MS); // Quiet time
-        play_tone(NOTE_G4, 200);
-         vTaskDelay(50 / portTICK_PERIOD_MS); // Quiet time
-        play_tone(NOTE_C5, 200);
-         vTaskDelay(50 / portTICK_PERIOD_MS); // Quiet time
-        play_tone(NOTE_G4, 200);
-         vTaskDelay(50 / portTICK_PERIOD_MS); // Quiet time
-        play_tone(NOTE_C4, 200);
+    case 5: //rfid tag read chirp
+        play_tone(NOTE_C5, 50);
         break;
     default:
         break;

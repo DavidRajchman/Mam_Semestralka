@@ -252,6 +252,9 @@ void alarm_execution_task(void *params)
     ESP_LOGI(TAG, "Alarm execution task started");
     while(1)
     {
+        //disable led
+        set_led(0, 0, 0);
+        vTaskDelay(pdMS_TO_TICKS(100));
         // Check if current time is within Do Not Disturb period (timetable 0)
         timetable_t dnd_timetable;
         if(load_timetable(0, &dnd_timetable) && check_timeslot_active(&dnd_timetable)) {
