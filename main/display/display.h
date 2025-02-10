@@ -18,7 +18,7 @@ esp_err_t display_task_type1(uint8_t wifi_status, uint8_t time_status, const tas
 void display_idle_clock_screen(u8g2_t *u8g2, uint8_t wifi_status, uint8_t time_status);
 void display_message(u8g2_t *u8g2, uint8_t wifi_status, uint8_t time_status, const char *line1, const char *line2,
                      const char *line3, const char *line4, int center);
-void render_top_info_bar(u8g2_t *u8g2, uint8_t wifi_status, uint8_t time_status)
+void render_top_info_bar(u8g2_t *u8g2, uint8_t wifi_status, uint8_t time_status);
 
 
 

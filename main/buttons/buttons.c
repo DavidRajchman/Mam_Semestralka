@@ -1,9 +1,13 @@
 #include "buttons.h"
 
 // Duplicate the definition from main if not already available.
-#ifndef INTERUPT_PIN
-#define INTERUPT_PIN 1
-#endif
+
+
+#include "buttons.h"
+
+
+// Global storage for quick action tasks for each button.
+static quick_action_task_func_t quick_action_task_functions[4] = { NULL, NULL, NULL, NULL };
 
 // External variables from the ULP program and main logic.
 extern uint32_t ulp_button_pressed_num;
@@ -39,7 +43,7 @@ static void buttons_interrupt_task(void *params)
         if (xQueueReceive(interruptQueue, &pinNumber, portMAX_DELAY))
         {
             // Process ULP-related events when the designated interrupt pin fires.
-            if (pinNumber == INTERUPT_PIN)
+            if (pinNumber == BUTTONS_INTERUPT_PIN)
             {
                 if (ulp_button_pressed_num == 0)
                 {
@@ -72,6 +76,10 @@ static void buttons_interrupt_task(void *params)
                                 button_control.command = button_values[i];
                                 xQueueSend(buttonControlQueue_local, &button_control, 0);
                             }
+                            else
+                            {
+                                quick_action_task_launcher(i);
+                            }
                         }
                     }
 
@@ -102,18 +110,30 @@ static void install_buttons_isr(uint32_t button_gpio)
 }
 
 /**
- * @brief Initialize the button/ULP interrupt processing.
+ * @brief Initialize the button/ULP interrupt processing and assign quick action tasks.
  *
- * Creates an internal interrupt queue and starts the processing task.
- * The buttonControlQueue (declared in main) is passed in so that processed
- * button events can be forwarded.
+ * This function installs the GPIO ISR, creates an internal interrupt queue, and
+ * stores the supplied quick action task functions (each of which must follow the standard
+ * FreeRTOS task prototype). When button control is not active, the corresponding quick
+ * action task will be launched upon button press.
  *
  * @param buttonControlQueue The queue for button control commands.
+ * @param task0 Quick action task function for button 0.
+ * @param task1 Quick action task function for button 1.
+ * @param task2 Quick action task function for button 2.
+ * @param task3 Quick action task function for button 3.
  */
-void init_buttons(QueueHandle_t buttonControlQueue)
+void init_buttons(QueueHandle_t buttonControlQueue, quick_action_task_func_t task0,
+                  quick_action_task_func_t task1, quick_action_task_func_t task2, quick_action_task_func_t task3)
 {
     install_buttons_isr(BUTTONS_INTERUPT_PIN);
     buttonControlQueue_local = buttonControlQueue;
+    // Store quick action task functions.
+    quick_action_task_functions[0] = task0;
+    quick_action_task_functions[1] = task1;
+    quick_action_task_functions[2] = task2;
+    quick_action_task_functions[3] = task3;
+
     interruptQueue = xQueueCreate(10, sizeof(int));
     if (interruptQueue == NULL)
     {
@@ -121,4 +141,35 @@ void init_buttons(QueueHandle_t buttonControlQueue)
     }
 
     xTaskCreate(buttons_interrupt_task, "buttons_interrupt_task", 2048, NULL, 1, NULL);
+}
+
+/**
+ * @brief Launches a quick action task corresponding to the given button.
+ *
+ * This function creates and starts a new FreeRTOS task based on the quick action task
+ * function pointer supplied via init_buttons. The new task is launched with a standard
+ * FreeRTOS function prototype.
+ *
+ * @param button_id The button index (0 through 3).
+ */
+void quick_action_task_launcher(int button_id) {
+    if (button_id < 0 || button_id > 3) {
+        ESP_LOGE(TAG, "Invalid button_id %d for quick action task launcher", button_id);
+        return;
+    }
+    if (quick_action_task_functions[button_id] != NULL) {
+        BaseType_t ret = xTaskCreate(
+            quick_action_task_functions[button_id],
+            "quick_action_task",   // Task name
+            4096,                  // Stack size
+            NULL,                  // Parameter for the task
+            1,                     // Priority (adjust as needed)
+            NULL
+        );
+        if (ret != pdPASS) {
+            ESP_LOGE(TAG, "Failed to create quick action task for button %d", button_id);
+        }
+    } else {
+        ESP_LOGW(TAG, "No quick action task assigned for button %d", button_id);
+    }
 }

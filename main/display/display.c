@@ -1,6 +1,8 @@
 #include "display.h"
 
-static const char *TAG = "display";
+
+
+static const char *DISPLAY_TAG = "display";
 
 
 void task_test_SSD1306i2c(void* ignore) {
@@ -17,26 +19,26 @@ void task_test_SSD1306i2c(void* ignore) {
       u8g2_esp32_gpio_and_delay_cb);  // init u8g2 structure
   u8x8_SetI2CAddress(&u8g2.u8x8, 0x78);
 
-  ESP_LOGI(TAG, "u8g2_InitDisplay");
+  ESP_LOGI(DISPLAY_TAG, "u8g2_InitDisplay");
   u8g2_InitDisplay(&u8g2);  // send init sequence to the display, display is in
                             // sleep mode after this,
 
-  ESP_LOGI(TAG, "u8g2_SetPowerSave");
+  ESP_LOGI(DISPLAY_TAG, "u8g2_SetPowerSave");
   u8g2_SetPowerSave(&u8g2, 0);  // wake up display
-  ESP_LOGI(TAG, "u8g2_ClearBuffer");
+  ESP_LOGI(DISPLAY_TAG, "u8g2_ClearBuffer");
   u8g2_ClearBuffer(&u8g2);
-  ESP_LOGI(TAG, "u8g2_DrawBox");
+  ESP_LOGI(DISPLAY_TAG, "u8g2_DrawBox");
   u8g2_DrawBox(&u8g2, 0, 26, 80, 6);
   u8g2_DrawFrame(&u8g2, 0, 26, 100, 6);
 
-  ESP_LOGI(TAG, "u8g2_SetFont");
+  ESP_LOGI(DISPLAY_TAG, "u8g2_SetFont");
   u8g2_SetFont(&u8g2, u8g2_font_ncenB14_tr);
-  ESP_LOGI(TAG, "u8g2_DrawStr");
+  ESP_LOGI(DISPLAY_TAG, "u8g2_DrawStr");
   u8g2_DrawStr(&u8g2, 2, 17, "Hi nkolban!");
-  ESP_LOGI(TAG, "u8g2_SendBuffer");
+  ESP_LOGI(DISPLAY_TAG, "u8g2_SendBuffer");
   u8g2_SendBuffer(&u8g2);
 
-  ESP_LOGI(TAG, "All done!");
+  ESP_LOGI(DISPLAY_TAG, "All done!");
 
 u8g2_ClearBuffer(&u8g2);
 u8g2_SetBitmapMode(&u8g2, 1);
@@ -81,9 +83,9 @@ void init_ssd1306_display(u8g2_t *u8g2)
 
     u8x8_SetI2CAddress(&u8g2->u8x8, 0x78);
 
-    ESP_LOGI(TAG, "u8g2_InitDisplay");
+    ESP_LOGI(DISPLAY_TAG, "u8g2_InitDisplay");
     u8g2_InitDisplay(u8g2);
-    ESP_LOGI(TAG, "u8g2_SetPowerSave");
+    ESP_LOGI(DISPLAY_TAG, "u8g2_SetPowerSave");
     u8g2_SetPowerSave(u8g2, 0);
 }
 
@@ -95,7 +97,7 @@ void init_ssd1306_display(u8g2_t *u8g2)
  * @param wifi_status  0 for OK, non-zero otherwise
  * @param time_status  0 for OK, non-zero otherwise
  */
-void render_top_info_bar(u8g2_t *u8g2, uint8_t wifi_status, uint8_t time_status)
+ void render_top_info_bar(u8g2_t *u8g2, uint8_t wifi_status, uint8_t time_status)
 {
     u8g2_DrawBox(u8g2, 0, 0, 127, 9);
 
@@ -141,7 +143,7 @@ void render_top_info_bar(u8g2_t *u8g2, uint8_t wifi_status, uint8_t time_status)
 esp_err_t display_task_type1(uint8_t wifi_status, uint8_t time_status, const task_t *task, u8g2_t u8g2)
 {
     if (task == NULL || task->Type != 1) {
-        ESP_LOGE(TAG, "Invalid task or task type not equal to 1");
+        ESP_LOGE(DISPLAY_TAG, "Invalid task or task type not equal to 1");
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -214,7 +216,7 @@ void display_idle_clock_screen(u8g2_t *u8g2, uint8_t wifi_status, uint8_t time_s
     // If system time is not set (tm_year < 70 indicates before 1970), show error message
     if(timeinfo.tm_year < 71)
     {
-        ESP_LOGW(TAG, "Time not set ");
+        ESP_LOGW(DISPLAY_TAG, "Time not set ");
         u8g2_SetFont(u8g2, u8g2_font_timR14_tr);
         u8g2_DrawStr(u8g2, 10, 30, "Time not set");
         u8g2_DrawStr(u8g2, 10, 50, "Check WiFi");

@@ -8,6 +8,6 @@
 #define LED_GPIO 8
 
 void init_led();
-void set_led(uint32_t red, uint32_t green, uint32_t blue);
+void set_led(uint32_t red, uint32_t green, uint32_t blue); //max 255 per color for current led
 
 #endif // LED_H

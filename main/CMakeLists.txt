@@ -10,11 +10,12 @@ set(app_sources "main.c"
 "buzzer/buzzer.c"
 "led/led.c"
 "buttons/buttons.c"
+"alarm_execution/alarm_execution.c"
 
 )
 
 idf_component_register(SRCS ${app_sources}
-                       INCLUDE_DIRS "." "display" "rfid" "json_parser" "wifi" "buzzer" "led" "buttons"
+                       INCLUDE_DIRS "." "display" "rfid" "json_parser" "wifi" "buzzer" "led" "buttons" "alarm_execution"
                        REQUIRES ulp u8g2 u8g2-hal-esp-idf json nvs_flash esp_wifi driver
                        WHOLE_ARCHIVE
                        )

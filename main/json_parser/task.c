@@ -18,45 +18,50 @@ void set_default_tasks(void)
     memset(&t1, 0, sizeof(t1));
     memset(&t2, 0, sizeof(t2));
     memset(&t3, 0, sizeof(t3));
+    char *json_str;
+    esp_err_t err;
 
-    // Default Task 1
-    t1.Type = 1;
-    strncpy(t1.Name, "Cas Doma", MAX_TASK_NAME_LEN);
-    t1.Name[MAX_TASK_NAME_LEN] = '\0';
-    t1.ID = 1;
-    //rfid uid = AAB4B512
-    strncpy(t1.RFID_UID, "AAB4B512", MAX_RFID_UID_LEN);
-    // Fill options (always 4 options)
-    for (int i = 0; i < TASK_MAX_OPTIONS; i++) {
-        // For default, you might vary details; here we fill two options and leave others empty.
-        if(i == 0) {
-            strncpy(t1.Options[i].display_text, "breakfast 1d", MAX_OPTION_DISPLAY_LEN);
-            t1.Options[i].display_text[MAX_OPTION_DISPLAY_LEN] = '\0';
-            uint8_t ts1[] = {1, 2, 4};
-            t1.Options[i].timeslot_count = sizeof(ts1) / sizeof(ts1[0]);
-            for (int j = 0; j < t1.Options[i].timeslot_count; j++) {
-                t1.Options[i].timeslots[j] = ts1[j];
-            }
-            t1.Options[i].priority = 1;
-            t1.Options[i].days_till_em = 1;
-        } else if(i == 1) {
-            strncpy(t1.Options[i].display_text, "dinner 1d", MAX_OPTION_DISPLAY_LEN);
-            t1.Options[i].display_text[MAX_OPTION_DISPLAY_LEN] = '\0';
-            uint8_t ts2[] = {1, 3};
-            t1.Options[i].timeslot_count = sizeof(ts2) / sizeof(ts2[0]);
-            for (int j = 0; j < t1.Options[i].timeslot_count; j++) {
-                t1.Options[i].timeslots[j] = ts2[j];
-            }
-            t1.Options[i].priority = 1;
-            t1.Options[i].days_till_em = 1;
-        } else {
-            // Empty option
-            t1.Options[i].display_text[0] = '\0';
-            t1.Options[i].timeslot_count = 0;
-            t1.Options[i].priority = 0;
-            t1.Options[i].days_till_em = 0;
-        }
-    }
+     // Default Task 1 using JSON
+    const char *t1_json = "{"
+                            "\"Type\": 1,"
+                            "\"Name\": \"Cas Doma\","
+                            "\"ID\": 1,"
+                            "\"RFID_UID\": \"AAB4B512\","
+                            "\"Options\": ["
+                                "{"
+                                    "\"display_text\": \"breakfast 1D EM\","
+                                    "\"Timeslots\": [1],"
+                                    "\"priority\": 1,"
+                                    "\"days_till_em\": 1"
+                                "},"
+                                "{"
+                                    "\"display_text\": \"dinner 1D EM\","
+                                    "\"Timeslots\": [3],"
+                                    "\"priority\": 1,"
+                                    "\"days_till_em\": 1"
+                                "},"
+                                "{"
+                                    "\"display_text\": \"breakfast 2D EM\","
+                                    "\"Timeslots\": [1],"
+                                    "\"priority\": 1,"
+                                    "\"days_till_em\": 2"
+                                "},"
+                                "{"
+                                    "\"display_text\": \"dinner 2D EM\","
+                                    "\"Timeslots\": [3],"
+                                    "\"priority\": 1,"
+                                    "\"days_till_em\": 2"
+                                "}"
+                            "]"
+                          "}";
+
+    // Store t1 using the JSON string
+    err = store_task_json(t1_json, true);
+    if(err == ESP_OK)
+        ESP_LOGI(localTAG, "Stored default task 1 successfully.");
+    else
+        ESP_LOGE(localTAG, "Failed to store default task 1: %s", esp_err_to_name(err));
+
 
     // Default Task 2
     t2.Type = 1;
@@ -79,6 +84,19 @@ void set_default_tasks(void)
         }
     }
 
+    json_str = task_to_json(&t2);
+    if (json_str != NULL) {
+        err = store_task_json(json_str, true);
+        if(err == ESP_OK)
+            ESP_LOGI(localTAG, "Stored default task 2 successfully.");
+        else
+            ESP_LOGE(localTAG, "Failed to store default task 2: %s", esp_err_to_name(err));
+        free(json_str);
+    } else {
+        ESP_LOGE(localTAG, "Failed to generate JSON for default task 2.");
+    }
+
+
     // Default Task 3
     const char *t3_json = "{"
                             "\"Type\": 1,"
@@ -93,59 +111,36 @@ void set_default_tasks(void)
                                     "\"days_till_em\": 0"
                                 "},"
                                 "{"
-                                    "\"display_text\": \"Option 2: Description\","
-                                    "\"Timeslots\": [1],"
+                                    "\"display_text\": \"wholeday, priority1\","
+                                    "\"Timeslots\": [2],"
                                     "\"priority\": 1,"
-                                    "\"days_till_em\": 0"
+                                    "\"days_till_em\": 1"
                                 "},"
                                 "{"
-                                    "\"display_text\": \"Option 3: Description\","
-                                    "\"Timeslots\": [],"
-                                    "\"priority\": 0,"
-                                    "\"days_till_em\": 0"
+                                    "\"display_text\": \"wholeday priority2\","
+                                    "\"Timeslots\": [2],"
+                                    "\"priority\": 2,"
+                                    "\"days_till_em\": 1"
                                 "},"
                                 "{"
-                                    "\"display_text\": \"Option 4: Description\","
-                                    "\"Timeslots\": [],"
-                                    "\"priority\": 0,"
-                                    "\"days_till_em\": 0"
+                                    "\"display_text\": \"wholeday priority3\","
+                                    "\"Timeslots\": [2],"
+                                    "\"priority\": 3,"
+                                    "\"days_till_em\": 1"
                                 "}"
                             "]"
                           "}";
 
     // Store t3 using the JSON string.
-    esp_err_t err = store_task_json(t3_json, true);
+    err = store_task_json(t3_json, true);
     if(err == ESP_OK)
         ESP_LOGI(localTAG, "Stored default task 3 (personal task) successfully.");
     else
         ESP_LOGE(localTAG, "Failed to store default task 3: %s", esp_err_to_name(err));
 
-    char *json_str;
 
-    // Store each task using task_to_json and store_task_json.
-    json_str = task_to_json(&t1);
-    if (json_str != NULL) {
-        err = store_task_json(json_str, true);
-        if(err == ESP_OK)
-            ESP_LOGI(localTAG, "Stored default task 1 successfully.");
-        else
-            ESP_LOGE(localTAG, "Failed to store default task 1: %s", esp_err_to_name(err));
-        free(json_str);
-    } else {
-        ESP_LOGE(localTAG, "Failed to generate JSON for default task 1.");
-    }
 
-    json_str = task_to_json(&t2);
-    if (json_str != NULL) {
-        err = store_task_json(json_str, true);
-        if(err == ESP_OK)
-            ESP_LOGI(localTAG, "Stored default task 2 successfully.");
-        else
-            ESP_LOGE(localTAG, "Failed to store default task 2: %s", esp_err_to_name(err));
-        free(json_str);
-    } else {
-        ESP_LOGE(localTAG, "Failed to generate JSON for default task 2.");
-    }
+
 
 
 }
@@ -646,3 +641,25 @@ void log_task(int id)
     }
 }
 
+
+task_t *get_task_by_id(int id) {
+    char *json_str = retrieve_task_json(id);
+    if (!json_str) {
+        return NULL;
+    }
+
+    task_t *task = malloc(sizeof(task_t));
+    if (!task) {
+        free(json_str);
+        return NULL;
+    }
+
+    if (!parse_task_json(json_str, task)) {
+        free(json_str);
+        free(task);
+        return NULL;
+    }
+
+    free(json_str);
+    return task;
+}

@@ -27,6 +27,7 @@ void init_led()
     /// Create the LED strip object
 
     ESP_ERROR_CHECK(led_strip_new_rmt_device(&strip_config, &rmt_config, &led_strip));
+    ESP_ERROR_CHECK(led_strip_clear(led_strip));
 
 }
 

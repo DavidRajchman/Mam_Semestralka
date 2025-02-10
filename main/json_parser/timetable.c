@@ -22,12 +22,12 @@ void set_default_timetables(void)
     tt0.Type = 1;
     strncpy(tt1.Name, "DO NOT DISTURB", MAX_NAME_LEN);
     tt0.Name[MAX_NAME_LEN] = '\0';
-    tt0.ID = 1;
+    tt0.ID = 0;
     tt0.times_count = 2;
     tt0.Times_active[0].Start_time = 000;
     tt0.Times_active[0].End_time   = 800;
     tt0.Times_active[1].Start_time = 2200;
-    tt0.Times_active[1].End_time   = 2359;
+    tt0.Times_active[1].End_time   = 2400;
     // Define default timetable 1
     tt1.Type = 1;
     strncpy(tt1.Name, "Morning Schedule", MAX_NAME_LEN);
@@ -40,16 +40,16 @@ void set_default_timetables(void)
     tt1.Times_active[1].End_time   = 1000;
 
     // Define default timetable 2
-    tt2.Type = 2;
-    strncpy(tt2.Name, "Afternoon Schedule", MAX_NAME_LEN);
+    tt2.Type = 1;
+    strncpy(tt2.Name, "Whole day", MAX_NAME_LEN);
     tt2.Name[MAX_NAME_LEN] = '\0';
     tt2.ID = 2;
     tt2.times_count = 1;
-    tt2.Times_active[0].Start_time = 1200;
-    tt2.Times_active[0].End_time   = 1300;
+    tt2.Times_active[0].Start_time = 0000;
+    tt2.Times_active[0].End_time   = 2400;
 
     // Define default timetable 3
-    tt3.Type = 3;
+    tt3.Type = 1;
     strncpy(tt3.Name, "Evening Schedule", MAX_NAME_LEN);
     tt3.Name[MAX_NAME_LEN] = '\0';
     tt3.ID = 3;
@@ -59,6 +59,21 @@ void set_default_timetables(void)
 
     char *json_str;
     esp_err_t err;
+
+    // Convert and store timetable 0
+    json_str = timetable_to_json(&tt0);
+    if (json_str != NULL) {
+        err = store_timetable_json(json_str, true);
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "Stored default timetable 1 successfully.");
+        } else {
+            ESP_LOGE(TAG, "Failed to store default timetable 1: %s", esp_err_to_name(err));
+        }
+        free(json_str);
+    } else {
+        ESP_LOGE(TAG, "Failed to generate JSON for default timetable 1.");
+    }
+
 
     // Convert and store timetable 1
     json_str = timetable_to_json(&tt1);

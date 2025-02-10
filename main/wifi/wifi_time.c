@@ -116,7 +116,7 @@ esp_err_t init_sntp(void)
 
     // Wait for time to be synchronized
     int retry = 0;
-    const int retry_count = 10;
+    const int retry_count = 20;
     while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && ++retry < retry_count) {
         ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
         vTaskDelay(2000 / portTICK_PERIOD_MS);
@@ -170,7 +170,7 @@ void wifi_sync_sntp_time_once_task(void *param)
 
     // Wait up to 30 seconds for WiFi to connect
     {
-        int checks = 30;
+        int checks = 60;
         while (wifi_status_var != WIFI_STATUS_CONNECTED && checks-- > 0) {
             // If overall task time is already beyond 10 minutes, abort
             if (xTaskGetTickCount() - start_tick > timeout_ticks) {

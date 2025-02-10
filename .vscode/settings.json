@@ -19,7 +19,8 @@
         "buttons.h": "c",
         "rtc_io.h": "c",
         "nvs_config.h": "c",
-        "timetable.h": "c"
+        "timetable.h": "c",
+        "alarm_execution.h": "c"
     },
     "idf.flashType": "UART",
     "workbench.colorCustomizations": {

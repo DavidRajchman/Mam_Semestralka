@@ -60,6 +60,9 @@ char *retrieve_task_json(int id);
 
 int get_task_id_by_rfid(const char *rfid_uid);
 
+task_t *get_task_by_id(int id);
+
+
 esp_err_t assign_rfid_to_task(const char *rfid_uid, uint8_t task_id);
 
 

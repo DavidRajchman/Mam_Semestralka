@@ -36,8 +36,12 @@ void play_tone(uint32_t freq, uint32_t duration_ms)
     ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
 }
 
-
-
+/**
+ * @brief BLOCKING Play a chirp sound based on the chirpID
+ * TASK BLOCKS EXECUTION FOR DURATION OF THE CHRIP
+ * use play_chirp_task in combination with SEND_CHIRP(chirpQueue, X) macro
+ * @param chirpID The ID of the chirp to play
+ **/
 void play_chirp(uint8_t chirpID)
 {
     switch (chirpID)
@@ -49,10 +53,12 @@ void play_chirp(uint8_t chirpID)
         vTaskDelay(50 / portTICK_PERIOD_MS); // Quiet time
         play_tone(NOTE_G4, 200);
         break;
-    case 2:
-        play_tone(NOTE_G4, 300);
-        vTaskDelay(100 / portTICK_PERIOD_MS); // Quiet time
-        play_tone(NOTE_C4, 300);
+    case 2: //failure chirp
+        play_tone(NOTE_E3, 150);
+        vTaskDelay(300 / portTICK_PERIOD_MS); // Quiet time
+        play_tone(NOTE_C3, 100);
+        vTaskDelay(30 / portTICK_PERIOD_MS); // Quiet time
+        play_tone(NOTE_A3, 150);
         break;
     case 3:
         play_tone(NOTE_C4, 150);

@@ -1,8 +1,4 @@
-Dodelat buzeni
-    - pouzit idle task.
-Pridat menu show active reminders
 Pridat stopky - bonus
 
 Odstranit erase nvs na zacatku main
 
-void task_running_reminders(void *params)
