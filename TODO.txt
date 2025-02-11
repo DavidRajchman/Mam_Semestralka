@@ -1,4 +1,5 @@
 Pridat stopky - bonus
+Zkontrolovat dlouhodobe fungovani time sync, pridat flag ktery signalizuje zda task bezi nebo ne a vyuzit ho misto task pointeru.
 
 Odstranit erase nvs na zacatku main
 

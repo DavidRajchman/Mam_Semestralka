@@ -768,7 +768,7 @@ void app_main(void)
 {
     //FOR TESTING
     //ERASE NVS PARTITION DATA
-    ESP_ERROR_CHECK(nvs_flash_erase_partition(NVS_PARTITION));
+    //ESP_ERROR_CHECK(nvs_flash_erase_partition(NVS_PARTITION));
 
 
 
